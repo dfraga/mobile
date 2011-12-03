@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:weightSum="1">
+
+	<LinearLayout android:id="@+id/baseLayoutId" xmlns:android="http://schemas.android.com/apk/res/android" android:orientation="vertical" android:gravity="center"
+	    android:layout_height="wrap_content" android:layout_width="fill_parent" >
+
+		<!--CalendarView android:id="@+id/calendario" android:layout_width="50mm" android:layout_height="50mm"/-->
+
+		<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:orientation="vertical" android:gravity="top"
+		    android:paddingLeft="50px" android:paddingTop="50px" android:layout_height="wrap_content" android:layout_width="fill_parent">
+
+            <CheckBox android:id="@+id/checkBlue" android:text="Bluetooth "
+                android:layout_height="wrap_content" android:layout_width="250px" android:gravity="center"/>
+
+			<CheckBox android:id="@+id/checkWifi" android:text="Wifi      "
+                android:layout_height="wrap_content" android:layout_width="250px" android:gravity="center"/>
+
+			<CheckBox android:id="@+id/check3G" android:text="Test      "
+                android:layout_height="wrap_content" android:layout_width="250px" android:gravity="center"/>
+
+        </LinearLayout>
+
+	    <Button android:id="@+id/offButtonId" android:layout_width="wrap_content" android:layout_height="wrap_content"
+	        android:text="Cerrar" android:enabled="true" android:checked="true" android:gravity="right"
+	        android:paddingLeft="250px" android:paddingTop="50px"/>
+        
+    </LinearLayout>
+
+
+</LinearLayout>
