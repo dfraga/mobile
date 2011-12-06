@@ -1,6 +1,7 @@
 package com.android.photoColorSwitcher;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
@@ -14,11 +15,12 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.MediaStore;
-import android.provider.MediaStore.Images;
+import android.provider.MediaStore.MediaColumns;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -36,6 +38,7 @@ public class PhotoColorSwitcherActivity extends Activity {
 	protected static final int REQUEST_CODE_GET_CONTENT = 2;
 	private Button applyButton;
 	private Button openButton;
+	private Button saveButton;
 
 	private ProgressDialog progressDialog;
 
@@ -46,6 +49,15 @@ public class PhotoColorSwitcherActivity extends Activity {
 	private FloatPicker huePicker;
 	private FloatPicker saturationPicker;
 	private FloatPicker valuePicker;
+
+	private final Runnable processErrorAction = new ExceptionActionRunnable() {};
+	final Handler progressThreadHandler = new Handler();
+	private long lastProgressUpdate = -1;
+
+	private int maxTotal = 100;
+	private int partial = 0;
+
+	private String filePath;
 
 	/** Called when the activity is first created. */
 	@Override
@@ -74,6 +86,15 @@ public class PhotoColorSwitcherActivity extends Activity {
 							getContent();
 						}
 					});
+			saveButton = (Button) findViewById(R.id.save_content);
+			saveButton.setOnClickListener(
+					new OnClickListener() {
+						@Override
+						public void onClick(final View v) {
+							saveContent();
+						}
+					});
+
 
 			progressDialog = new ProgressDialog(PhotoColorSwitcherActivity.this.applyButton.getContext());
 			progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
@@ -92,9 +113,7 @@ public class PhotoColorSwitcherActivity extends Activity {
 			progress = 0;
 		} catch (final Exception e) {
 			// No compatible file manager.
-			final String error = getStackTrace(("Error: " + e + " - " + e.getMessage()),e);
-			LOG.log(Level.SEVERE, error);
-			Toast.makeText(PhotoColorSwitcherActivity.this, error, Toast.LENGTH_SHORT).show();
+			processException(e);
 		}
 		getContent();
 	}
@@ -105,7 +124,7 @@ public class PhotoColorSwitcherActivity extends Activity {
 		intent.addCategory(Intent.CATEGORY_OPENABLE);
 
 		try {
-			startActivityForResult(intent, REQUEST_CODE_GET_CONTENT);
+			startActivityForResult(intent, PhotoColorSwitcherActivity.REQUEST_CODE_GET_CONTENT);
 		} catch (final ActivityNotFoundException e) {
 			Toast.makeText(this, "No compatible file manager was found.", Toast.LENGTH_SHORT).show();
 		}
@@ -120,8 +139,10 @@ public class PhotoColorSwitcherActivity extends Activity {
 			maxTotal = imBitmap.getWidth() * imBitmap.getHeight();
 			openButton.setEnabled(false);
 			applyButton.setEnabled(false);
+			saveButton.setEnabled(false);
 			openButton.setVisibility(View.INVISIBLE);
 			applyButton.setVisibility(View.INVISIBLE);
+			saveButton.setVisibility(View.INVISIBLE);
 			progress = 0;
 
 			progressDialog.setMax(100);
@@ -130,8 +151,6 @@ public class PhotoColorSwitcherActivity extends Activity {
 
 	};
 
-	final Handler progressThreadHandler = new Handler();
-	private long lastProgressUpdate = -1;
 	private final Runnable progressThread = new Runnable() {
 
 		@Override
@@ -157,8 +176,10 @@ public class PhotoColorSwitcherActivity extends Activity {
 
 			openButton.setVisibility(View.VISIBLE);
 			applyButton.setVisibility(View.VISIBLE);
+			saveButton.setVisibility(View.VISIBLE);
 			openButton.setEnabled(true);
 			applyButton.setEnabled(true);
+			saveButton.setEnabled(true);
 
 			progressDialog.hide();
 			//			if(progressDialog.isShowing()) {
@@ -176,12 +197,9 @@ public class PhotoColorSwitcherActivity extends Activity {
 
 		@Override
 		public void run() {
-			final String error = getStackTrace(("Error: " + e + " - " + e.getMessage()),e);
-			LOG.log(Level.SEVERE, error);
-			Toast.makeText(PhotoColorSwitcherActivity.this, error, Toast.LENGTH_SHORT).show();
+			processException(e);
 		}
 	};
-	private final Runnable processErrorAction = new ExceptionActionRunnable() {};
 
 	private void applyFilter() {
 		if(imBitmap != null) {
@@ -232,8 +250,6 @@ public class PhotoColorSwitcherActivity extends Activity {
 		}
 	}
 
-	private int maxTotal = 100;
-	private int partial = 0;
 	private int percentageProgression(final int x, final int y, final int yMax) {
 		if(maxTotal > 0) {
 			partial = ((x*yMax) + y) * 100;
@@ -249,12 +265,18 @@ public class PhotoColorSwitcherActivity extends Activity {
 		return prefix + "\n" + result.toString();
 	}
 
+	private void processException(final Throwable e) {
+		final String error = PhotoColorSwitcherActivity.getStackTrace(("Error: " + e + " - " + e.getMessage()),e);
+		PhotoColorSwitcherActivity.LOG.log(Level.SEVERE, error);
+		Toast.makeText(PhotoColorSwitcherActivity.this, error, Toast.LENGTH_SHORT).show();
+	}
+
 	@Override
 	protected void onActivityResult(final int requestCode, final int resultCode, final Intent data) {
 		super.onActivityResult(requestCode, resultCode, data);
 
 		try {
-			if(data != null && requestCode == REQUEST_CODE_GET_CONTENT && resultCode == RESULT_OK) {
+			if(data != null && requestCode == PhotoColorSwitcherActivity.REQUEST_CODE_GET_CONTENT && resultCode == Activity.RESULT_OK) {
 				String filePath = null;
 				final Uri uri = data.getData();
 				final Cursor c = getContentResolver().query(uri, new String[] {MediaStore.MediaColumns.DATA,
@@ -263,7 +285,7 @@ public class PhotoColorSwitcherActivity extends Activity {
 						MediaStore.MediaColumns.SIZE
 				}, null, null, null);
 				if (c != null && c.moveToFirst()) {
-					final int id = c.getColumnIndex(Images.Media.DATA);
+					final int id = c.getColumnIndex(MediaColumns.DATA);
 					if (id != -1) {
 						filePath = c.getString(id);
 					}
@@ -277,15 +299,14 @@ public class PhotoColorSwitcherActivity extends Activity {
 			}
 		} catch (final Exception e) {
 			// No compatible file manager was found.
-			final String error = getStackTrace(("Error: " + e + " - " + e.getMessage()),e);
-			LOG.log(Level.SEVERE, error);
-			Toast.makeText(PhotoColorSwitcherActivity.this, error, Toast.LENGTH_SHORT).show();
+			processException(e);
 		}
 	}
 
 	private void openImage(final String filePath) {
 		final File imgFile = new  File(filePath);
 		if(imgFile.exists()){
+			this.filePath = filePath;
 
 			if (!applyButton.isEnabled()) {
 				applyButton.setEnabled(true);
@@ -296,10 +317,39 @@ public class PhotoColorSwitcherActivity extends Activity {
 				valuePicker.setVisibility(View.VISIBLE);
 			}
 			imBitmap = BitmapFactory.decodeFile(filePath);
-
 			imageView.setImageBitmap(imBitmap);
 
 		}
 
 	}
+
+	private void saveContent() {
+		String prefixPath = filePath.substring(0, filePath.lastIndexOf("."));
+		String sufixPath = ".png";
+
+		for(int i = 0; i< Integer.MAX_VALUE; i++) {
+			String tempFilePath = prefixPath + "_" + i + sufixPath;
+			final File imgFile = new  File(tempFilePath);
+			if(!imgFile.exists()){
+				Toast.makeText(this, filePath, Toast.LENGTH_LONG).show();
+				//Save imBitmap
+
+				try {
+					Toast.makeText(this, "Saved file: " + tempFilePath, Toast.LENGTH_LONG).show();
+					FileOutputStream out = new FileOutputStream(tempFilePath);
+					imBitmap.compress(Bitmap.CompressFormat.PNG, 90, out);
+					out.flush();
+					out.close();
+				} catch (Exception e) {
+					processException(e);
+				}
+
+				//Actualizar galeria
+				MediaScannerConnection.scanFile(getApplicationContext(), new String[] {tempFilePath}, null, null);
+
+				break;
+			}
+		}
+	}
+
 }

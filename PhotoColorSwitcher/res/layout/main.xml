@@ -9,8 +9,13 @@
 	    android:layout_height="60px"
 	    >
 
-	    <Button android:id="@+id/get_content"
+        <Button android:id="@+id/get_content"
             android:text="Abrir"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="top" />
+        <Button android:id="@+id/save_content"
+            android:text="Guardar"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="top" />
