@@ -1,60 +1,87 @@
 package com.weather;
 
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Weather {
 
-	private static final int FINAL_STEP = (((byte)0x00  & 0xFF) << 24) + (((byte)0x37 & 0xFF) << 16)  + (((byte)0x37 & 0xFF) << 8) + (((byte)0x37 & 0xFF)<< 0);
+	private static final int FINAL_STEP = (((byte) 0x00 & 0xFF) << 24)
+			+ (((byte) 0x37 & 0xFF) << 16) + (((byte) 0x37 & 0xFF) << 8)
+			+ (((byte) 0x37 & 0xFF) << 0);
 
 	public static void main(final String[] args) {
 
-
 		try {
+			final InputStream is = Weather.class.getClassLoader()
+					.getResourceAsStream("COR110915203801.BPPI001");
 
-			final InputStream is = Weather.class.getClassLoader().getResourceAsStream("COR110915203801.BPPI001");
-
-			//			final byte[] oneB = new byte[1];
-			//			final StringBuffer tsb = new StringBuffer();
-			//			while(is.read(oneB, 0, 1) != -1) {
-			//				tsb.append( getHex(oneB) );
-			//			}
-			//			final BufferedWriter out = new BufferedWriter(new FileWriter("resources/salida.txt"));
-			//			out.write(tsb.toString());
-			//			out.close();
-			//			System.exit(1);
+			// final byte[] oneB = new byte[1];
+			// final StringBuffer tsb = new StringBuffer();
+			// while(is.read(oneB, 0, 1) != -1) {
+			// tsb.append( getHex(oneB) );
+			// }
+			// final BufferedWriter out = new BufferedWriter(new
+			// FileWriter("resources/salida.txt"));
+			// out.write(tsb.toString());
+			// out.close();
+			// System.exit(1);
 
 			boolean section = false;
 
 			int step = 8;
 			byte[] data = new byte[step];
 			int readedBytes = 0;
-
-			while(is.read(data, 0, step) != -1) {
-				if(section) {
+			int jump = 0;
+			List<Label> labels = new ArrayList<Label>();
+			while (is.read(data, 0, step) != -1) {
+				if (section) {
 					section = false;
 
-					step = (((byte)0x00  & 0xFF) << 24) + ((data[0] & 0xFF) << 16)  + ((data[1] & 0xFF) << 8) + ((data[2] & 0xFF)<< 0);
+					step = (((byte) 0x00 & 0xFF) << 24)
+							+ ((data[0] & 0xFF) << 16)
+							+ ((data[1] & 0xFF) << 8) + ((data[2] & 0xFF) << 0);
 
-					step = step == FINAL_STEP ? 1 : step-3;
+					step = step == FINAL_STEP ? 1 : step - 3;
+					jump++;
 
 				} else {
 					section = true;
 					step = 3;
 				}
 				final StringBuffer sb = new StringBuffer();
-				for(final byte b : data) {
-					readedBytes++;
-					if (readedBytes < 4) {
-						sb.append( (char)b);
-					} else if (readedBytes == 4) {
-						sb.append( (char)b).append( "\n");
+				if (jump == 3) {
+					ByteBuffer bb = ByteBuffer.wrap(data);
+					while (bb.position() < bb.limit() - 1) {
+						// TODO descartar primeros
+						labels.add(new Label(new byte[] { bb.get(), bb.get() }));
+					}
+					for (Label label : labels)
+						System.out.println(label);
+				} else if (jump == 4) {
+				} else {
+
+					for (final byte b : data) {
+						readedBytes++;
+						if (readedBytes < 4) {
+							sb.append((char) b);
+						} else if (readedBytes == 4) {
+							sb.append((char) b).append("\n");
+						}
 					}
 				}
-				sb.append( getHex(data) );
+				sb.append(getHex(data));
 				System.out.println("--> " + sb);
-				System.out.println("Readed bytes--> " + readedBytes + " next step: " + step);
+				System.out.println("Readed bytes[" + jump + "]--> "
+						+ readedBytes + " next step: " + step);
 
 				data = new byte[step];
+
+				if (jump == 2) {
+					// TODO if opcional
+					jump++;
+				}
 			}
 			System.out.println("Final Readed bytes--> " + readedBytes);
 
@@ -69,14 +96,15 @@ public class Weather {
 	}
 
 	static final String HEXES = "0123456789ABCDEF";
-	public static String getHex( final byte [] raw ) {
-		if ( raw == null ) {
+
+	public static String getHex(final byte[] raw) {
+		if (raw == null) {
 			return null;
 		}
-		final StringBuilder hex = new StringBuilder( 2 * raw.length );
-		for ( final byte b : raw ) {
+		final StringBuilder hex = new StringBuilder(2 * raw.length);
+		for (final byte b : raw) {
 			hex.append(HEXES.charAt((b & 0xF0) >> 4))
-			.append(HEXES.charAt((b & 0x0F))).append(" ");
+					.append(HEXES.charAt((b & 0x0F))).append(" ");
 		}
 		return hex.toString();
 	}
