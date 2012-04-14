@@ -30,8 +30,8 @@
  0 30  31       0.00000            Picture type
  0 29   2       0.00000            Co-ordinate grid type
  0 33   3       0.00000            Quality information
- 3 13   9     -32.00000   0 21   1 Horizontal reflectivity
-               74.00000   0 31   1 Delayed descriptor replication factor
+ 3 13   9     -32.00000   0 21   1 Horizontal reflectivity 7
+               74.00000   0 31   1 Delayed descriptor replication factor 8
               -31.00000   0 21   1 Horizontal reflectivity
               -30.00000   0 21   1 Horizontal reflectivity
               -29.00000   0 21   1 Horizontal reflectivity

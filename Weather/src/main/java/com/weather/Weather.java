@@ -1,9 +1,14 @@
 package com.weather;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
+import java.util.Properties;
 
 public class Weather {
 
@@ -11,7 +16,21 @@ public class Weather {
 			+ (((byte) 0x37 & 0xFF) << 16) + (((byte) 0x37 & 0xFF) << 8)
 			+ (((byte) 0x37 & 0xFF) << 0);
 
+	public static Properties props;
+
 	public static void main(final String[] args) {
+
+		// Cargamos properties
+		props = new Properties();
+		try {
+			props.load(new FileInputStream("resources/sizes.properties"));
+		} catch (FileNotFoundException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 
 		try {
 			final InputStream is = Weather.class.getClassLoader()
@@ -51,17 +70,35 @@ public class Weather {
 					step = 3;
 				}
 				final StringBuffer sb = new StringBuffer();
-				if (jump == 3) {
+				if (jump == 3 && section) {
 					ByteBuffer bb = ByteBuffer.wrap(data);
 					while (bb.position() < bb.limit() - 1) {
 						// TODO descartar primeros
 						labels.add(new Label(new byte[] { bb.get(), bb.get() }));
 					}
-					for (Label label : labels)
-						System.out.println(label);
-				} else if (jump == 4) {
-				} else {
+				} else if (jump == 4 && section) {
 
+					
+					//bloque pruebas 
+					BitSet dataBitSet = BitSet.valueOf(data);
+
+					BitSet midato = new BitSet();
+					Integer index = 0;
+					for (Label label : labels) {
+						System.out.println(label + " SIZE:" + label.size);
+						midato.clear();
+
+						midato = dataBitSet.get(index, index + label.size);
+						index = index + label.size;
+
+						System.out.println("--> INT:" + bitSetToInt(midato)
+								+ " INT2:" + bitSetToInt2(midato) + " LONG:"
+								+ bitSetToLong(midato) + " FLOAT:"
+								+ bitSetToFloat(midato) + " DOUBLE:"
+								+ bitSetToDouble(midato));
+					}
+					//bloque pruebas 
+				} else {
 					for (final byte b : data) {
 						readedBytes++;
 						if (readedBytes < 4) {
@@ -93,6 +130,58 @@ public class Weather {
 
 	public static int unsignedByteToInt(final byte b) {
 		return b & 0xFF;
+	}
+
+	public static int bitSetToInt(BitSet bitSet) {
+		int bitInteger = 0;
+		for (int i = 0; i < 32; i++)
+			if (bitSet.get(i))
+				bitInteger |= (1 << i);
+		return bitInteger;
+	}
+
+	public static int bitSetToInt2(BitSet bitSet) {
+		try {
+			String s = "";
+			for (int i = 0; i < 32; i++)
+				if (bitSet.get(i))
+					s = /* s + */"1" + s;
+				else
+					s = /* s + */"0" + s;
+			return Integer.parseInt(s, 2);
+		} catch (NumberFormatException e) {
+			return 0;
+		}
+	}
+
+	public static double bitSetToDouble(BitSet bitSet) {
+		try {
+			String s = "";
+			for (int i = 0; i < 32; i++)
+				if (bitSet.get(i))
+					s = /* s + */"1" + s;
+				else
+					s = /* s + */"0" + s;
+			return Double.parseDouble(s, 2);
+		} catch (NumberFormatException e) {
+			return 0;
+		}
+	}
+
+	public static float bitSetToFloat(BitSet bitSet) {
+		float bitInteger = 0;
+		for (int i = 0; i < 32; i++)
+			if (bitSet.get(i))
+				bitInteger |= (1 << i);
+		return bitInteger;
+	}
+
+	public static long bitSetToLong(BitSet bitSet) {
+		long bitInteger = 0;
+		for (int i = 0; i < 64; i++)
+			if (bitSet.get(i))
+				bitInteger |= (1 << i);
+		return bitInteger;
 	}
 
 	static final String HEXES = "0123456789ABCDEF";
