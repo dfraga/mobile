@@ -8,7 +8,7 @@ public class Label {
 
 	final int size;
 
-	Label(byte[] label) {
+	Label(final byte[] label) {
 		// XXX if (label.length != 2) error
 		type = LabelType.getLabelType(label[0]);
 
@@ -21,6 +21,7 @@ public class Label {
 				+ "." + x + "." + y));
 	}
 
+	@Override
 	public String toString() {
 		return type.name() + " , " + x + " , " + y;
 	}
