@@ -139,7 +139,7 @@ public class Weather {
 
 								//1º XXX extraer y simplificar codigo
 								//2º FIXME corregir xMultiple para que realice correctamente el bucle, N-plicando la etiqueta correcta y no la actual
-								//3º etiqueta 0.31.1 tambien indica xMultiple de la siguiente etiqueta (generalmente datos de reflectividad)
+								//3º etiqueta 0.31.1 tambien indica en su contenido, xMultiple de la siguiente etiqueta (generalmente datos de reflectividad)
 								if(currentLabel.type == LabelType.SEQUENCE_DESCRIPTOR_TABLE_D) {
 									if(Weather.props.containsKey(currentLabel.labelPropKey)) {
 										final String sequence = Weather.props.getProperty(currentLabel.labelPropKey);
@@ -237,13 +237,15 @@ public class Weather {
 	}
 
 	public static boolean getBit(final byte[] bitSet, final int i) {
-		return (bitSet[i/8] & (1 << (8-(i %8)))) != 0;
+		return (bitSet[i / 8] & (1 << (8 - (i % 8)))) != 0;
 	}
 
 	public static int bitSetToInt(final byte[] bitSet, final int beginBit, final int offSet) {
 		int bitInteger = 0;
 		for (int i = 0; i < offSet; i++) {
-			bitInteger += Weather.getBit(bitSet, beginBit+i) ? (1 << (offSet-(i+1))) : 0;
+			bitInteger += Weather.getBit(bitSet, beginBit + i)
+					? (1 << (offSet - (i + 1)))
+							: 0;
 		}
 		return bitInteger;
 	}
@@ -251,7 +253,9 @@ public class Weather {
 	public static long bitSetToLong(final byte[] bitSet, final int beginBit, final int offSet) {
 		long bitLong = 0;
 		for (int i = 0; i < offSet; i++) {
-			bitLong += Weather.getBit(bitSet, beginBit+i) ? (1L << (offSet-(i+1))) : 0L;
+			bitLong += Weather.getBit(bitSet, beginBit + i)
+					? (1L << (offSet - (i + 1)))
+							: 0L;
 		}
 		return bitLong;
 	}
@@ -259,26 +263,16 @@ public class Weather {
 	private static String printBitSet(final byte[] bitSet, final int beginBit, final int offSet) {
 		StringBuffer sb = new StringBuffer();
 		for (int i = 0; i < offSet; i++) {
-			if (Weather.getBit(bitSet, beginBit+i)) {
-				sb.append("1");
-			} else {
-				sb.append("0");
-			}
+			sb.append((Weather.getBit(bitSet, beginBit + i)) ? "1": "0");
 		}
 		return sb.toString();
 	}
 
 	private static String formattedBitSet(final byte[] bitSet) {
 		StringBuffer sb = new StringBuffer();
-		for (int i = 0; i < bitSet.length*8; i++) {
-			if(i%8==0) {
-				sb.append("\n\t");
-			}
-			if (Weather.getBit(bitSet, i)) {
-				sb.append("1");
-			} else {
-				sb.append("0");
-			}
+		for (int i = 0; i < bitSet.length * 8; i++) {
+			sb.append((i % 8 == 0) ? "\n\t" : "");
+			sb.append((Weather.getBit(bitSet, i)) ? "1": "0");
 		}
 		return sb.toString();
 	}
