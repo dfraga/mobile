@@ -3,7 +3,6 @@ package com.weather;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.List;
 import java.util.Properties;
 
@@ -186,26 +185,25 @@ public class Weather {
 							.getId()) {
 
 						// bloque pruebas
-						BitSet dataBitSet = Weather.fromByteArray(data);
+						System.out.println("DataBitSet:" + Weather.formattedBitSet(data));
 
-						BitSet singleBitSet = new BitSet();
-						//Primer byte reservado --> index = 4
-						int index = 4;
+						//Primer byte reservado --> index = 8
+						int index = 8;
 						for (Label label : labels) {
-							System.out.println(label + " SIZE:" + label.size);
-							singleBitSet.clear();
 
-							singleBitSet = dataBitSet.get(index, index + label.size);
-							index += label.size;
+							System.out.println(label + " SIZE:" + label.size);
 
 							if(label.type == LabelType.DESCRIPTOR) {
+								//TODO escala asociada a etiquetas:  9087 con escala 2 representa a valor 90.87
 								System.out.println("\t" + (
-										singleBitSet.length() < 33 ?
-												"--> INT:" + Weather.bitSetToInt(singleBitSet)
-												: "--> LONG:" + Weather.bitSetToLong(singleBitSet)
-												//TODO float
-										));
+										label.size < 33 ?
+												"--> INT:" + Weather.bitSetToInt(data, index, label.size)
+												: "--> LONG:" + Weather.bitSetToLong(data, index, label.size)
+										)
+										+ "\tBitSet: " + Weather.printBitSet(data, index, label.size));
 							}
+
+							index += label.size;
 						}
 						// bloque pruebas
 						sb.append("\n\t").append(Weather.getHex(data));
@@ -238,41 +236,53 @@ public class Weather {
 				+ ((data[1] & 0xFF) << 8) + ((data[2] & 0xFF) << 0);
 	}
 
-	public static int bitSetToInt(final BitSet bitSet) {
+	public static boolean getBit(final byte[] bitSet, final int i) {
+		return (bitSet[i/8] & (1 << (8-(i %8)))) != 0;
+	}
+
+	public static int bitSetToInt(final byte[] bitSet, final int beginBit, final int offSet) {
 		int bitInteger = 0;
-		for (int i = 0; i < bitSet.length(); i++) {
-			bitInteger += bitSet.get(i) ? (1 << i) : 0;
+		for (int i = 0; i < offSet; i++) {
+			bitInteger += Weather.getBit(bitSet, beginBit+i) ? (1 << (offSet-(i+1))) : 0;
 		}
 		return bitInteger;
 	}
 
-	public static long bitSetToLong(final BitSet bitSet) {
-		int bitInteger = 0;
-		for (int i = 0; i < bitSet.length(); i++) {
-			bitInteger += bitSet.get(i) ? (1L << i) : 0L;
+	public static long bitSetToLong(final byte[] bitSet, final int beginBit, final int offSet) {
+		long bitLong = 0;
+		for (int i = 0; i < offSet; i++) {
+			bitLong += Weather.getBit(bitSet, beginBit+i) ? (1L << (offSet-(i+1))) : 0L;
 		}
-		return bitInteger;
+		return bitLong;
 	}
 
-	public static byte[] toByteArray(final BitSet bits) {
-		byte[] bytes = new byte[bits.length()/8+1];
-		for (int i=0; i<bits.length(); i++) {
-			if (bits.get(i)) {
-				bytes[bytes.length-i/8-1] |= 1<<(i%8);
+	private static String printBitSet(final byte[] bitSet, final int beginBit, final int offSet) {
+		StringBuffer sb = new StringBuffer();
+		for (int i = 0; i < offSet; i++) {
+			if (Weather.getBit(bitSet, beginBit+i)) {
+				sb.append("1");
+			} else {
+				sb.append("0");
 			}
 		}
-		return bytes;
+		return sb.toString();
 	}
 
-	private static BitSet fromByteArray(final byte[] bytes) {
-		BitSet bits = new BitSet();
-		for (int i=0; i<bytes.length*8; i++) {
-			if ((bytes[bytes.length-i/8-1]&(1<<(i%8))) > 0) {
-				bits.set(i);
+	private static String formattedBitSet(final byte[] bitSet) {
+		StringBuffer sb = new StringBuffer();
+		for (int i = 0; i < bitSet.length*8; i++) {
+			if(i%8==0) {
+				sb.append("\n\t");
+			}
+			if (Weather.getBit(bitSet, i)) {
+				sb.append("1");
+			} else {
+				sb.append("0");
 			}
 		}
-		return bits;
+		return sb.toString();
 	}
+
 
 	private static final String HEXES = "0123456789ABCDEF";
 
