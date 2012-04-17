@@ -1,8 +1,5 @@
 package com.weather;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -16,24 +13,20 @@ public class Weather {
 			+ (((byte) 0x37 & 0xFF) << 16) + (((byte) 0x37 & 0xFF) << 8)
 			+ (((byte) 0x37 & 0xFF) << 0);
 
-	public static Properties props;
 	private static int BUFR_SECTION = 0;
+	public static final Properties props = new Properties();
 
 	public static void main(final String[] args) {
 
-		// Cargamos properties
-		props = new Properties();
-		try {
-			props.load(new FileInputStream("resources/sizes.properties"));
-		} catch (FileNotFoundException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
 
 		try {
+			// Cargamos properties
+
+			final InputStream porpertiesIs = Weather.class.getClassLoader()
+					.getResourceAsStream("sizes2.properties");
+			Weather.props.load(porpertiesIs);
+
+			// Cargamos fichero de datos
 			final InputStream is = Weather.class.getClassLoader()
 					.getResourceAsStream("COR110915203801.BPPI001");
 
@@ -44,6 +37,22 @@ public class Weather {
 			List<Label> labels = new ArrayList<Label>();
 			boolean optionalPresence = false;
 			while (is.read(data, 0, step) != -1) {
+				if (section) {
+					section = false;
+
+					step = Weather.int3(data);
+
+					step = step == Weather.FINAL_STEP ? 1 : step - 3;
+					Weather.BUFR_SECTION++;
+
+				} else {
+					if (Weather.BUFR_SECTION == SectionType.OPTIONAL_SECTION.getId()
+							&& !optionalPresence) {
+						Weather.BUFR_SECTION++;
+					}
+					section = true;
+					step = 3;
+				}
 
 				final StringBuffer sb = new StringBuffer();
 
@@ -60,8 +69,8 @@ public class Weather {
 						int totalLength = Weather.int3(dst);
 						byte bufrVersion = bb.get();
 						sb.append("\n\t· totalLength ").append(totalLength)
-								.append("\n\t· bufrVersion ")
-								.append(bufrVersion);
+						.append("\n\t· bufrVersion ")
+						.append(bufrVersion);
 
 					} else if (Weather.BUFR_SECTION == SectionType.IDENTIFICATION_SECTION
 							.getId()) {
@@ -90,30 +99,23 @@ public class Weather {
 						if (optionalSection != (byte) 0) {
 							optionalPresence = true;
 						}
-						sb.append("\n\t· masterTableNumber ")
-								.append(masterTableNumber)
-								.append("\n\t· centre ").append(centre)
-								.append("\n\t· subCentre ").append(subCentre)
-								.append("\n\t· updateSequence ")
-								.append(updateSequence)
-								.append("\n\t· optionalSection ")
-								.append(optionalSection)
-								.append("\n\t· dataCategoryTableA ")
-								.append(dataCategoryTableA)
-								.append("\n\t· internationalDataSubCategory ")
-								.append(internationalDataSubCategory)
-								.append("\n\t· localSubCategory ")
-								.append(localSubCategory)
-								.append("\n\t· masterTableVersion ")
-								.append(masterTableVersion)
-								.append("\n\t· localTableVersion ")
-								.append(localTableVersion)
-								.append("\n\t· year ").append(year)
-								.append("\n\t· month ").append(month)
-								.append("\n\t· day ").append(day)
-								.append("\n\t· hour ").append(hour)
-								.append("\n\t· minute ").append(minute)
-								.append("\n\t· second ").append(second);
+						sb
+						.append("\n\t· masterTableNumber ").append(masterTableNumber)
+						.append("\n\t· centre ").append(centre)
+						.append("\n\t· subCentre ").append(subCentre)
+						.append("\n\t· updateSequence ").append(updateSequence)
+						.append("\n\t· optionalSection ").append(optionalSection)
+						.append("\n\t· dataCategoryTableA ").append(dataCategoryTableA)
+						.append("\n\t· internationalDataSubCategory ").append(internationalDataSubCategory)
+						.append("\n\t· localSubCategory ").append(localSubCategory)
+						.append("\n\t· masterTableVersion ").append(masterTableVersion)
+						.append("\n\t· localTableVersion ").append(localTableVersion)
+						.append("\n\t· year ").append(year)
+						.append("\n\t· month ").append(month)
+						.append("\n\t· day ").append(day)
+						.append("\n\t· hour ").append(hour)
+						.append("\n\t· minute ").append(minute)
+						.append("\n\t· second ").append(second);
 
 					} else if (Weather.BUFR_SECTION == SectionType.LABELS_SECTION
 							.getId()) {
@@ -127,12 +129,52 @@ public class Weather {
 						boolean observed = (dataType & observedDataMask) == observedDataMask;
 						boolean compressed = (dataType & compressedDataMask) == compressedDataMask;
 						sb.append("\n\t· dataSubsets ").append(dataSubsets)
-								.append("\n\t· observed ").append(observed)
-								.append("\n\t· compressed ")
-								.append(compressed).append("\n");
+						.append("\n\t· observed ").append(observed)
+						.append("\n\t· compressed ").append(compressed).append("\n");
+
+						int xMultiple = 1;
 						while (bb.position() < bb.limit() - 1) {
-							labels.add(new Label(new byte[] { bb.get(),
-									bb.get() }));
+							final Label currentLabel = new Label(new byte[] { bb.get(), bb.get() });
+							for(int k = 0; k<xMultiple; k++) {
+								labels.add(currentLabel);
+
+								//1º XXX extraer y simplificar codigo
+								//2º FIXME corregir xMultiple para que realice correctamente el bucle, N-plicando la etiqueta correcta y no la actual
+								//3º etiqueta 0.31.1 tambien indica xMultiple de la siguiente etiqueta (generalmente datos de reflectividad)
+								if(currentLabel.type == LabelType.SEQUENCE_DESCRIPTOR_TABLE_D) {
+									if(Weather.props.containsKey(currentLabel.labelPropKey)) {
+										final String sequence = Weather.props.getProperty(currentLabel.labelPropKey);
+										final String [] subLabels = sequence.split(",");
+										for(final String subLabel : subLabels) {
+											final String[] labelKey = subLabel.split(":")[0].split("\\.");
+											final int instances = subLabel.contains(":") ? Integer.valueOf(subLabel.split(":")[1]): 1;
+											for(int i = 0; i<instances; i++) {
+												for(int j = 0; j<xMultiple; j++) {
+													final Label sub = new Label(
+															Integer.valueOf(labelKey[0]),
+															Integer.valueOf(labelKey[1]),
+															Integer.valueOf(labelKey[2]));
+													labels.add(sub);
+
+													if(sub.type == LabelType.MULTIPLE) {
+														xMultiple = sub.x;
+													} else {
+														xMultiple = 1;
+													}
+												}
+											}
+										}
+									} else {
+										System.out.println("@@@ NO EXISTE PROPERTY " + currentLabel.labelPropKey);
+									}
+								}
+								if(currentLabel.type == LabelType.MULTIPLE) {
+									xMultiple = currentLabel.x;
+								} else {
+									xMultiple = 1;
+								}
+							}
+
 						}
 						for (Label label : labels) {
 							sb.append("\t").append(label).append("\n");
@@ -142,23 +184,28 @@ public class Weather {
 						sb.append("\n\t").append(Weather.getHex(data));
 					} else if (Weather.BUFR_SECTION == SectionType.DATA_SECTION
 							.getId()) {
-						// bloque pruebas
-						BitSet dataBitSet = BitSet.valueOf(data);
 
-						BitSet midato = new BitSet();
-						Integer index = 0;
+						// bloque pruebas
+						BitSet dataBitSet = Weather.fromByteArray(data);
+
+						BitSet singleBitSet = new BitSet();
+						//Primer byte reservado --> index = 4
+						int index = 4;
 						for (Label label : labels) {
 							System.out.println(label + " SIZE:" + label.size);
-							midato.clear();
+							singleBitSet.clear();
 
-							midato = dataBitSet.get(index, index + label.size);
-							index = index + label.size;
+							singleBitSet = dataBitSet.get(index, index + label.size);
+							index += label.size;
 
-							System.out.println("--> INT:" + bitSetToInt(midato)
-									+ " INT2:" + bitSetToInt2(midato)
-									+ " LONG:" + bitSetToLong(midato)
-									+ " FLOAT:" + bitSetToFloat(midato)
-									+ " DOUBLE:" + bitSetToDouble(midato));
+							if(label.type == LabelType.DESCRIPTOR) {
+								System.out.println("\t" + (
+										singleBitSet.length() < 33 ?
+												"--> INT:" + Weather.bitSetToInt(singleBitSet)
+												: "--> LONG:" + Weather.bitSetToLong(singleBitSet)
+												//TODO float
+										));
+							}
 						}
 						// bloque pruebas
 						sb.append("\n\t").append(Weather.getHex(data));
@@ -170,10 +217,8 @@ public class Weather {
 					// Nada sb.append(Weather.getHex(data));
 				}
 
-				if (sb.length() > 0) {
-					System.out.println("@@["
-							+ SectionType.values()[Weather.BUFR_SECTION] + "]"
-							+ sb + "\n\n");
+				if(sb.length() > 0 ) {
+					System.out.println("@@[" + SectionType.values()[Weather.BUFR_SECTION] + "]" + sb + "\n\n");
 				}
 
 				data = new byte[step];
@@ -190,59 +235,43 @@ public class Weather {
 	private static int int3(final byte[] data) {
 		return data.length < 3 ? Integer.MIN_VALUE
 				: (((byte) 0x00 & 0xFF) << 24) + ((data[0] & 0xFF) << 16)
-						+ ((data[1] & 0xFF) << 8) + ((data[2] & 0xFF) << 0);
+				+ ((data[1] & 0xFF) << 8) + ((data[2] & 0xFF) << 0);
 	}
 
-	public static int bitSetToInt(BitSet bitSet) {
+	public static int bitSetToInt(final BitSet bitSet) {
 		int bitInteger = 0;
-		for (int i = 0; i < 32; i++)
-			if (bitSet.get(i))
-				bitInteger |= (1 << i);
-		return bitInteger;
-	}
-
-	public static int bitSetToInt2(BitSet bitSet) {
-		try {
-			String s = "";
-			for (int i = 0; i < 32; i++)
-				if (bitSet.get(i))
-					s = /* s + */"1" + s;
-				else
-					s = /* s + */"0" + s;
-			return Integer.parseInt(s, 2);
-		} catch (NumberFormatException e) {
-			return 0;
+		for (int i = 0; i < bitSet.length(); i++) {
+			bitInteger += bitSet.get(i) ? (1 << i) : 0;
 		}
+		return bitInteger;
 	}
 
-	public static double bitSetToDouble(BitSet bitSet) {
-		try {
-			String s = "";
-			for (int i = 0; i < 32; i++)
-				if (bitSet.get(i))
-					s = /* s + */"1" + s;
-				else
-					s = /* s + */"0" + s;
-			return Double.parseDouble(s, 2);
-		} catch (NumberFormatException e) {
-			return 0;
+	public static long bitSetToLong(final BitSet bitSet) {
+		int bitInteger = 0;
+		for (int i = 0; i < bitSet.length(); i++) {
+			bitInteger += bitSet.get(i) ? (1L << i) : 0L;
 		}
-	}
-
-	public static float bitSetToFloat(BitSet bitSet) {
-		float bitInteger = 0;
-		for (int i = 0; i < 32; i++)
-			if (bitSet.get(i))
-				bitInteger |= (1 << i);
 		return bitInteger;
 	}
 
-	public static long bitSetToLong(BitSet bitSet) {
-		long bitInteger = 0;
-		for (int i = 0; i < 64; i++)
-			if (bitSet.get(i))
-				bitInteger |= (1 << i);
-		return bitInteger;
+	public static byte[] toByteArray(final BitSet bits) {
+		byte[] bytes = new byte[bits.length()/8+1];
+		for (int i=0; i<bits.length(); i++) {
+			if (bits.get(i)) {
+				bytes[bytes.length-i/8-1] |= 1<<(i%8);
+			}
+		}
+		return bytes;
+	}
+
+	private static BitSet fromByteArray(final byte[] bytes) {
+		BitSet bits = new BitSet();
+		for (int i=0; i<bytes.length*8; i++) {
+			if ((bytes[bytes.length-i/8-1]&(1<<(i%8))) > 0) {
+				bits.set(i);
+			}
+		}
+		return bits;
 	}
 
 	private static final String HEXES = "0123456789ABCDEF";
@@ -254,7 +283,7 @@ public class Weather {
 		final StringBuilder hex = new StringBuilder(2 * raw.length);
 		for (final byte b : raw) {
 			hex.append(Weather.HEXES.charAt((b & 0xF0) >> 4))
-					.append(Weather.HEXES.charAt((b & 0x0F))).append(" ");
+			.append(Weather.HEXES.charAt((b & 0x0F))).append(" ");
 		}
 		return hex.toString();
 	}
