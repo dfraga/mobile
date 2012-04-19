@@ -131,49 +131,9 @@ public class Weather {
 						.append("\n\t· observed ").append(observed)
 						.append("\n\t· compressed ").append(compressed).append("\n");
 
-						int xMultiple = 1;
+						int next = 1;
 						while (bb.position() < bb.limit() - 1) {
-							final Label currentLabel = new Label(new byte[] { bb.get(), bb.get() });
-							for(int k = 0; k<xMultiple; k++) {
-								labels.add(currentLabel);
-
-								//1º XXX extraer y simplificar codigo
-								//2º FIXME corregir xMultiple para que realice correctamente el bucle, N-plicando la etiqueta correcta y no la actual
-								//3º etiqueta 0.31.1 tambien indica en su contenido, xMultiple de la siguiente etiqueta (generalmente datos de reflectividad)
-								if(currentLabel.type == LabelType.SEQUENCE_DESCRIPTOR_TABLE_D) {
-									if(Weather.props.containsKey(currentLabel.labelPropKey)) {
-										final String sequence = Weather.props.getProperty(currentLabel.labelPropKey);
-										final String [] subLabels = sequence.split(",");
-										for(final String subLabel : subLabels) {
-											final String[] labelKey = subLabel.split(":")[0].split("\\.");
-											final int instances = subLabel.contains(":") ? Integer.valueOf(subLabel.split(":")[1]): 1;
-											for(int i = 0; i<instances; i++) {
-												for(int j = 0; j<xMultiple; j++) {
-													final Label sub = new Label(
-															Integer.valueOf(labelKey[0]),
-															Integer.valueOf(labelKey[1]),
-															Integer.valueOf(labelKey[2]));
-													labels.add(sub);
-
-													if(sub.type == LabelType.MULTIPLE) {
-														xMultiple = sub.x;
-													} else {
-														xMultiple = 1;
-													}
-												}
-											}
-										}
-									} else {
-										System.out.println("@@@ NO EXISTE PROPERTY " + currentLabel.labelPropKey);
-									}
-								}
-								if(currentLabel.type == LabelType.MULTIPLE) {
-									xMultiple = currentLabel.x;
-								} else {
-									xMultiple = 1;
-								}
-							}
-
+							next = Weather.processLabel(bb.get(), bb.get(), labels, next);
 						}
 						for (Label label : labels) {
 							sb.append("\t").append(label).append("\n");
@@ -229,6 +189,57 @@ public class Weather {
 		}
 
 	}
+
+
+
+
+	private static int processLabel(final byte b0, final byte b1, final List<Label> labels, final int nTimes) {
+		final Label currentLabel = new Label(new byte[] { b0, b1 });
+		return Weather.processLabel(currentLabel.type.id, currentLabel.x, currentLabel.y, labels, nTimes);
+	}
+
+	private static int processLabel(final int labelType, final int x, final int y, final List<Label> labels, final int nTimes) {
+		Label currentLabel = new Label(labelType,x,y);
+		int next = 1;
+		for(int k = 0; k<nTimes; k++) {
+			labels.add(currentLabel);
+
+			//TODO etiqueta 0.31.1 tambien indica en su contenido multiples siguientes?
+			if(currentLabel.type == LabelType.SEQUENCE_DESCRIPTOR_TABLE_D) {
+				next = Weather.processSequenceLabel(currentLabel, labels, 1);
+			} else if(currentLabel.type == LabelType.MULTIPLE) {
+				next = currentLabel.x;
+			} else {
+				next = 1;
+			}
+		}
+		return next;
+	}
+
+	private static int processSequenceLabel(final Label sequenceLabel, final List<Label> labels, final int nTimes) {
+		int next = 1;
+		for(int k = 0; k<nTimes; k++) {
+			if(Weather.props.containsKey(sequenceLabel.labelPropKey)) {
+				final String sequence = Weather.props.getProperty(sequenceLabel.labelPropKey);
+				final String [] subLabels = sequence.split(",");
+				for(final String subLabel : subLabels) {
+					final String[] labelKey = subLabel.split(":")[0].split("\\.");
+					final int instances = subLabel.contains(":") ? Integer.valueOf(subLabel.split(":")[1]): next;
+
+					next = Weather.processLabel(
+							Integer.valueOf(labelKey[0]), Integer.valueOf(labelKey[1]), Integer.valueOf(labelKey[2]),
+							labels, instances);
+				}
+			} else {
+				System.out.println("@@@ NO EXISTE PROPERTY " + sequenceLabel.labelPropKey);
+				next = 1;
+			}
+		}
+		return next;
+	}
+
+
+
 
 	private static int int3(final byte[] data) {
 		return data.length < 3 ? Integer.MIN_VALUE

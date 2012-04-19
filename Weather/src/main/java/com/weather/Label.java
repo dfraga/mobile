@@ -27,11 +27,10 @@ public class Label {
 
 		labelPropKey = type.getId()+ "." + x + "." + y;
 
-		//XXX si label de tipo SEQUENCE_DESCRIPTOR_TABLE_D, se compone de varias subetiquetas
+		// si label de tipo SEQUENCE_DESCRIPTOR_TABLE_D, se compone de varias subetiquetas
 		// ejemplo en properties 3.1.1=0.1.1,0.1.2   (separadas por comas. si una etiqueta es de la forma 'f.x.y':'N' indica que se repite N veces consecutivas.
 		// dentro de un mismo sequence pueden repetirse etiquetas
 
-		//XXX MULTIPLE indica replica de datos x veces de la siguiente etiqueta a leer. Confirmar esto ultimo
 		if(type != LabelType.SEQUENCE_DESCRIPTOR_TABLE_D
 				&& type != LabelType.MULTIPLE) {
 
