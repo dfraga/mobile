@@ -8,6 +8,7 @@ public class Label {
 
 	final String labelPropKey;
 	final int size;
+	final int scale;
 
 	Label(final byte[] label) {
 		this( LabelType.getLabelType(label[0]).getId(),
@@ -34,13 +35,19 @@ public class Label {
 		if(type != LabelType.SEQUENCE_DESCRIPTOR_TABLE_D
 				&& type != LabelType.MULTIPLE) {
 
-			boolean exist = Weather.props.containsKey(labelPropKey);
-			if(!exist) {
+			if( Weather.props.containsKey(labelPropKey)) {
+				String labelProps = Weather.props.getProperty(labelPropKey);
+				//Separado por ; tamaño;escala
+				size = Integer.parseInt(labelProps.split(";")[0]);
+				scale = labelProps.contains(";") ? Integer.valueOf(labelProps.split(";")[1]): 0;
+			} else {
 				System.out.println("@@@ NO EXISTE PROPERTY " + labelPropKey);
+				size = 0;
+				scale = 0;
 			}
-			size = exist ? Integer.parseInt(Weather.props.getProperty(labelPropKey)):0;
 		} else {
 			size = 0;
+			scale = 0;
 		}
 	}
 
