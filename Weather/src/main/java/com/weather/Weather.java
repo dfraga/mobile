@@ -132,9 +132,8 @@ public class Weather {
 						.append("\n\t· observed ").append(observed)
 						.append("\n\t· compressed ").append(compressed).append("\n");
 
-						int next = 1;
 						while (bb.position() < bb.limit() - 1) {
-							next = Weather.processLabel(bb.get(), bb.get(), labels, next);
+							Weather.getLabel(bb.get(), bb.get(), labels, 1);
 						}
 						for (Label label : labels) {
 							sb.append("\t").append(label).append("\n");
@@ -151,7 +150,6 @@ public class Weather {
 						//Primer byte reservado --> index = 8
 						int index = 8;
 						for (Label label : labels) {
-
 							System.out.println(label + " SIZE:" + label.size + " SCALE:" + label.scale);
 
 							if(label.type == LabelType.DESCRIPTOR) {
@@ -163,6 +161,18 @@ public class Weather {
 										)
 										+ "\n\t--> DOUBLE:" + Weather.bitSetToDouble(data, index, label.size, label.scale)
 										+ "\tBitSet: " + Weather.printBitSet(data, index, label.size));
+							}
+							if(label.type == LabelType.MULTIPLE) {
+								// XXX LabelType.MULTIPLE; 1.Y.0 --> la siguiente etiqueta es el contador de repeticiones, las Y-siguientes la secuencia a repetir
+								int labelIndex = labels.indexOf(label);
+								StringBuffer sbm = new StringBuffer("@@ MULTIPLE index de labels:" + labelIndex
+										+ " Valor del contador dentro de etiqueta " + labels.get(labelIndex+1) + " secuencia --> ");
+								for(int i = labelIndex+2; i< labelIndex+2+label.x; i++){
+									sbm.append(labels.get(i)).append(" | ");
+								}
+								System.out.println(sbm);
+								//TODO proceso de etiquetas en funciones.
+								//TODO proceso de etiquetas anidadas (para multiples)
 							}
 
 							index += label.size;
@@ -196,49 +206,40 @@ public class Weather {
 
 
 
-	private static int processLabel(final byte b0, final byte b1, final List<Label> labels, final int nTimes) {
+	private static void getLabel(final byte b0, final byte b1, final List<Label> labels, final int nTimes) {
 		final Label currentLabel = new Label(new byte[] { b0, b1 });
-		return Weather.processLabel(currentLabel.type.id, currentLabel.x, currentLabel.y, labels, nTimes);
+		Weather.getLabel(currentLabel.type.id, currentLabel.x, currentLabel.y, labels, nTimes);
 	}
 
-	private static int processLabel(final int labelType, final int x, final int y, final List<Label> labels, final int nTimes) {
+	private static void getLabel(final int labelType, final int x, final int y, final List<Label> labels, final int nTimes) {
 		Label currentLabel = new Label(labelType,x,y);
-		int next = 1;
 		for(int k = 0; k<nTimes; k++) {
 			labels.add(currentLabel);
 
-			//TODO etiqueta 0.31.1 tambien indica en su contenido multiples siguientes?
 			if(currentLabel.type == LabelType.SEQUENCE_DESCRIPTOR_TABLE_D) {
-				next = Weather.processSequenceLabel(currentLabel, labels, 1);
-			} else if(currentLabel.type == LabelType.MULTIPLE) {
-				next = currentLabel.x;
-			} else {
-				next = 1;
+				Weather.getSequenceLabel(currentLabel, labels, 1);
 			}
+			// XXX LabelType.MULTIPLE; realmente, representan una estructura, la repeticion es en tiempo de interpretacion de datos  *ver Info_desarrollos/ProtocoloBUFR/bufr_sw_desc.pdf
 		}
-		return next;
 	}
 
-	private static int processSequenceLabel(final Label sequenceLabel, final List<Label> labels, final int nTimes) {
-		int next = 1;
+	private static void getSequenceLabel(final Label sequenceLabel, final List<Label> labels, final int nTimes) {
 		for(int k = 0; k<nTimes; k++) {
 			if(Weather.props.containsKey(sequenceLabel.labelPropKey)) {
 				final String sequence = Weather.props.getProperty(sequenceLabel.labelPropKey);
 				final String [] subLabels = sequence.split(",");
 				for(final String subLabel : subLabels) {
 					final String[] labelKey = subLabel.split(":")[0].split("\\.");
-					final int instances = subLabel.contains(":") ? Integer.valueOf(subLabel.split(":")[1]): next;
+					final int instances = subLabel.contains(":") ? Integer.valueOf(subLabel.split(":")[1]): 1;
 
-					next = Weather.processLabel(
+					Weather.getLabel(
 							Integer.valueOf(labelKey[0]), Integer.valueOf(labelKey[1]), Integer.valueOf(labelKey[2]),
 							labels, instances);
 				}
 			} else {
 				System.out.println("@@@ NO EXISTE PROPERTY " + sequenceLabel.labelPropKey);
-				next = 1;
 			}
 		}
-		return next;
 	}
 
 

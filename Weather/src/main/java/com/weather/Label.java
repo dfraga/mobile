@@ -56,4 +56,18 @@ public class Label {
 		return type.name() + " , " + labelPropKey;
 	}
 
+	/**
+	 * Nos interesa que el equals compare exactamente el objeto, sin sobreescribirlo por claves
+	 */
+	@Override
+	public boolean equals(final Object obj) {
+		return super.equals(obj);
+	}
+
+	@Override
+	public int hashCode() {
+		return super.hashCode();
+	}
+
+
 }
