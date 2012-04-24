@@ -17,6 +17,10 @@ public class Weather {
 
 	public static void main(final String[] args) {
 
+		//		System.out.println("" + Weather.bitSetToInt(new byte[]{(byte) 0x07, (byte) 0xDC},0,16,0));
+		//		System.out.println("" + Weather.int3(new byte[]{(byte) 0x00, (byte) 0x07, (byte) 0xDC}));
+		//		System.out.println(Weather.printBitSet(new byte[]{(byte) 0x07, (byte) 0xDC},0,16));
+		//		System.exit(0);
 
 		try {
 			// Cargamos properties
@@ -138,50 +142,21 @@ public class Weather {
 						for (Label label : labels) {
 							sb.append("\t").append(label).append("\n");
 						}
-					} else if (Weather.BUFR_SECTION == SectionType.OPTIONAL_SECTION
-							.getId()) {
+					} else if (Weather.BUFR_SECTION == SectionType.OPTIONAL_SECTION.getId()) {
 						sb.append("\n\t").append(Weather.getHex(data));
-					} else if (Weather.BUFR_SECTION == SectionType.DATA_SECTION
-							.getId()) {
+					} else if (Weather.BUFR_SECTION == SectionType.DATA_SECTION.getId()) {
 
 						// bloque pruebas
 						System.out.println("DataBitSet:" + Weather.formattedBitSet(data));
 
 						//Primer byte reservado --> index = 8
 						int index = 8;
-						for (Label label : labels) {
-							System.out.println(label + " SIZE:" + label.size + " SCALE:" + label.scale);
-
-							if(label.type == LabelType.DESCRIPTOR) {
-								// escala asociada a etiquetas:  9087 con escala 2 representa a valor 90.87
-								System.out.println("\t" + (
-										label.size < 33 ?
-												"--> INT:" + Weather.bitSetToInt(data, index, label.size, label.scale)
-												: "--> LONG:" + Weather.bitSetToLong(data, index, label.size, label.scale)
-										)
-										+ "\n\t--> DOUBLE:" + Weather.bitSetToDouble(data, index, label.size, label.scale)
-										+ "\tBitSet: " + Weather.printBitSet(data, index, label.size));
-							}
-							if(label.type == LabelType.MULTIPLE) {
-								// XXX LabelType.MULTIPLE; 1.Y.0 --> la siguiente etiqueta es el contador de repeticiones, las Y-siguientes la secuencia a repetir
-								int labelIndex = labels.indexOf(label);
-								StringBuffer sbm = new StringBuffer("@@ MULTIPLE index de labels:" + labelIndex
-										+ " Valor del contador dentro de etiqueta " + labels.get(labelIndex+1) + " secuencia --> ");
-								for(int i = labelIndex+2; i< labelIndex+2+label.x; i++){
-									sbm.append(labels.get(i)).append(" | ");
-								}
-								System.out.println(sbm);
-								//TODO proceso de etiquetas en funciones.
-								//TODO proceso de etiquetas anidadas (para multiples)
-							}
-
-							index += label.size;
-						}
+						final Label[] arrayLabels = labels.toArray(new Label[0]);
+						index = Weather.processLabels(index, data, arrayLabels, 1);
 						// bloque pruebas
-						sb.append("\n\t Bits:" + index + " BYTES:" + ((index/8)+(index%8==0?0:1)) + " Data[" + data.length + "]:\t")
-						.append(Weather.getHex(data));
-					} else if (Weather.BUFR_SECTION == SectionType.END_SECTION
-							.getId()) {
+						sb.append("\n\t Interpretados:" + index + " Bits = " + ((index/8)+(index%8==0?0:1))
+								+ " BYTES ### Data[" + data.length + "]:\t").append(Weather.getHex(data));
+					} else if (Weather.BUFR_SECTION == SectionType.END_SECTION.getId()) {
 						// Nada
 					}
 				} else {
@@ -204,7 +179,53 @@ public class Weather {
 	}
 
 
+	private static int processLabels(int index, final byte[] data, final Label[] arrayLabels, final int repeats) {
+		for(int n=0; n < repeats; n++) {
+			for (int arrayIndex=0; arrayIndex < arrayLabels.length; arrayIndex++) {
+				Label label = arrayLabels[arrayIndex];
+				System.out.println(label + " SIZE:" + label.size + " SCALE:" + label.scale);
 
+				if(label.type == LabelType.DESCRIPTOR) {
+					// escala asociada a etiquetas:  9087 con escala 2 representa a valor 90.87
+					System.out.println("\t" + (
+							label.size < 33 ?
+									"--> INT:" + Weather.bitSetToInt(data, index, label.size, label.scale)
+									: "--> LONG:" + Weather.bitSetToLong(data, index, label.size, label.scale)
+							)
+							+ "\n\t--> DOUBLE:" + Weather.bitSetToDouble(data, index, label.size, label.scale)
+							+ "\tBitSet: " + Weather.printBitSet(data, index, label.size));
+				}
+
+				index += label.size;
+
+
+				if(label.type == LabelType.MULTIPLE) {
+					// LabelType.MULTIPLE; 1.Y.0 --> la siguiente etiqueta es el contador de repeticiones, las Y-siguientes la secuencia a repetir
+					arrayIndex++;
+					Label countLabel = arrayLabels[arrayIndex];
+					Label[] labelSequence = new Label[label.x];
+
+					StringBuffer sbm = new StringBuffer("@@ MULTIPLE index de labels:" + arrayIndex
+							+ " Valor del contador dentro de etiqueta " + countLabel + " secuencia --> ");
+					int repIndex = 0;
+					arrayIndex++;
+					for(int i = arrayIndex; i< arrayIndex+label.x; i++){
+						sbm.append(arrayLabels[i]).append(" | ");
+						labelSequence[repIndex] = arrayLabels[i];
+						repIndex++;
+					}
+					Integer count = Weather.bitSetToInt(data, index, countLabel.size, countLabel.scale);
+					index += countLabel.size;
+					arrayIndex += label.x -1;
+					sbm.append("\tNº veces: #" + count);
+					System.out.println(sbm);
+					index = Weather.processLabels(index, data, labelSequence, count);
+				}
+
+			}
+		}
+		return index;
+	}
 
 	private static void getLabel(final byte b0, final byte b1, final List<Label> labels, final int nTimes) {
 		final Label currentLabel = new Label(new byte[] { b0, b1 });
@@ -219,7 +240,7 @@ public class Weather {
 			if(currentLabel.type == LabelType.SEQUENCE_DESCRIPTOR_TABLE_D) {
 				Weather.getSequenceLabel(currentLabel, labels, 1);
 			}
-			// XXX LabelType.MULTIPLE; realmente, representan una estructura, la repeticion es en tiempo de interpretacion de datos  *ver Info_desarrollos/ProtocoloBUFR/bufr_sw_desc.pdf
+			// LabelType.MULTIPLE; realmente, representan una estructura, la repeticion es en tiempo de interpretacion de datos  *ver Info_desarrollos/ProtocoloBUFR/bufr_sw_desc.pdf
 		}
 	}
 
@@ -252,7 +273,7 @@ public class Weather {
 	}
 
 	public static boolean getBit(final byte[] bitSet, final int i) {
-		return (bitSet[i / 8] & (1 << (8 - (i % 8)))) != 0;
+		return (bitSet[i / 8] & (1 << (8 - (i % 8) -1))) != 0;
 	}
 
 	public static int bitSetToInt(final byte[] bitSet, final int beginBit, final int offSet, final int scale) {

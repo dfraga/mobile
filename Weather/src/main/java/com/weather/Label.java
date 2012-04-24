@@ -53,7 +53,7 @@ public class Label {
 
 	@Override
 	public String toString() {
-		return type.name() + " , " + labelPropKey;
+		return "[" + type.name() + " , " + labelPropKey + "]";
 	}
 
 	/**
