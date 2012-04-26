@@ -152,7 +152,7 @@ public class Weather {
 						//Primer byte reservado --> index = 8
 						int index = 8;
 						final Label[] arrayLabels = labels.toArray(new Label[0]);
-						index = Weather.processLabels(index, data, arrayLabels, 1);
+						index = Weather.processLabels(index, data, arrayLabels, 1, 1);
 						// bloque pruebas
 						sb.append("\n\t Interpretados:" + index + " Bits = " + ((index/8)+(index%8==0?0:1))
 								+ " BYTES ### Data[" + data.length + "]:\t").append(Weather.getHex(data));
@@ -179,20 +179,26 @@ public class Weather {
 	}
 
 
-	private static int processLabels(int index, final byte[] data, final Label[] arrayLabels, final int repeats) {
+	private static int processLabels(int index, final byte[] data, final Label[] arrayLabels, final int repeats, final int level) {
+		String levelSt = "";
+		for(int n=0; n < level; n++) {
+			levelSt += "\t";
+		}
 		for(int n=0; n < repeats; n++) {
+			System.out.println(levelSt + "## Nº" + (n+1));
 			for (int arrayIndex=0; arrayIndex < arrayLabels.length; arrayIndex++) {
 				Label label = arrayLabels[arrayIndex];
-				System.out.println(label + " SIZE:" + label.size + " SCALE:" + label.scale);
+				System.out.println(levelSt + label + " SIZE:" + label.size + " SCALE:" + label.scale);
 
 				if(label.type == LabelType.DESCRIPTOR) {
 					// escala asociada a etiquetas:  9087 con escala 2 representa a valor 90.87
-					System.out.println("\t" + (
+					System.out.println(levelSt + "\t" + (
 							label.size < 33 ?
 									"--> INT:" + Weather.bitSetToInt(data, index, label.size, label.scale)
 									: "--> LONG:" + Weather.bitSetToLong(data, index, label.size, label.scale)
 							)
-							+ "\n\t--> DOUBLE:" + Weather.bitSetToDouble(data, index, label.size, label.scale)
+							+ "\n"
+							+ levelSt + "\t--> DOUBLE:" + Weather.bitSetToDouble(data, index, label.size, label.scale)
 							+ "\tBitSet: " + Weather.printBitSet(data, index, label.size));
 				}
 
@@ -205,7 +211,7 @@ public class Weather {
 					Label countLabel = arrayLabels[arrayIndex];
 					Label[] labelSequence = new Label[label.x];
 
-					StringBuffer sbm = new StringBuffer("@@ MULTIPLE index de labels:" + arrayIndex
+					StringBuffer sbm = new StringBuffer(levelSt + "@@ MULTIPLE index de labels:" + arrayIndex
 							+ " Valor del contador dentro de etiqueta " + countLabel + " secuencia --> ");
 					int repIndex = 0;
 					arrayIndex++;
@@ -219,7 +225,7 @@ public class Weather {
 					arrayIndex += label.x -1;
 					sbm.append("\tNº veces: #" + count);
 					System.out.println(sbm);
-					index = Weather.processLabels(index, data, labelSequence, count);
+					index = Weather.processLabels(index, data, labelSequence, count, level+1);
 				}
 
 			}
