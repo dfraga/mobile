@@ -192,14 +192,15 @@ public class Weather {
 
 				if(label.type == LabelType.DESCRIPTOR) {
 					// escala asociada a etiquetas:  9087 con escala 2 representa a valor 90.87
-					System.out.println(levelSt + "\t" + (
-							label.size < 33 ?
-									"--> INT:" + Weather.bitSetToInt(data, index, label.size, label.scale)
-									: "--> LONG:" + Weather.bitSetToLong(data, index, label.size, label.scale)
-							)
-							+ "\n"
-							+ levelSt + "\t--> DOUBLE:" + Weather.bitSetToDouble(data, index, label.size, label.scale)
-							+ "\tBitSet: " + Weather.printBitSet(data, index, label.size));
+					System.out.println(levelSt + "\t" +
+							(Math.abs(label.scale) == 1 ?
+									(label.size < 33 ?
+											"--> INT:" + Weather.bitSetToInt(data, index, label.size, label.scale)
+											: "--> LONG:" + Weather.bitSetToLong(data, index, label.size, label.scale)
+											) : ( "--> DOUBLE:" + Weather.bitSetToDouble(data, index, label.size, label.scale))
+									)
+									+ (Weather.isUnknownValue(data, index, label.size) ? "\t### UNKNOWN DATA VALUE ###" : "" )
+									+ "\tBitSet: " + Weather.printBitSet(data, index, label.size));
 				}
 
 				index += label.size;
@@ -290,6 +291,15 @@ public class Weather {
 							: 0;
 		}
 		return bitInteger / (scale==0? 1 : (scale*10));
+	}
+
+	public static boolean isUnknownValue(final byte[] bitSet, final int beginBit, final int offSet) {
+		for (int i = 0; i < offSet; i++) {
+			if(!Weather.getBit(bitSet, beginBit + i)) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	public static long bitSetToLong(final byte[] bitSet, final int beginBit, final int offSet, final int scale) {
