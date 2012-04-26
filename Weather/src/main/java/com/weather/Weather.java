@@ -147,7 +147,7 @@ public class Weather {
 					} else if (Weather.BUFR_SECTION == SectionType.DATA_SECTION.getId()) {
 
 						// bloque pruebas
-						System.out.println("DataBitSet:" + Weather.formattedBitSet(data));
+						//System.out.println("DataBitSet:" + Weather.formattedBitSet(data));
 
 						//Primer byte reservado --> index = 8
 						int index = 8;
@@ -199,8 +199,10 @@ public class Weather {
 											: "--> LONG:" + Weather.bitSetToLong(data, index, label.size, label.scale)
 											) : ( "--> DOUBLE:" + Weather.bitSetToDouble(data, index, label.size, label.scale))
 									)
-									+ (Weather.isUnknownValue(data, index, label.size) ? "\t### UNKNOWN DATA VALUE ###" : "" )
-									+ "\tBitSet: " + Weather.printBitSet(data, index, label.size));
+									+ (Weather.isUnknownValue(data, index, label.size) ? "\t# NO DATA #" : "" )
+									//+ "\tBitSet: " + Weather.printBitSet(data, index, label.size)
+							)
+							;
 				}
 
 				index += label.size;
@@ -212,8 +214,9 @@ public class Weather {
 					Label countLabel = arrayLabels[arrayIndex];
 					Label[] labelSequence = new Label[label.x];
 
-					StringBuffer sbm = new StringBuffer(levelSt + "@@ MULTIPLE index de labels:" + arrayIndex
-							+ " Valor del contador dentro de etiqueta " + countLabel + " secuencia --> ");
+					StringBuffer sbm = new StringBuffer(levelSt + "@@ MULTIPLE:"
+							//+ " index de labels:" + arrayIndex
+							+ " Contador en " + countLabel + " secuencia --> ");
 					int repIndex = 0;
 					arrayIndex++;
 					for(int i = arrayIndex; i< arrayIndex+label.x; i++){
@@ -224,7 +227,7 @@ public class Weather {
 					Integer count = Weather.bitSetToInt(data, index, countLabel.size, countLabel.scale);
 					index += countLabel.size;
 					arrayIndex += label.x -1;
-					sbm.append("\tNº veces: #" + count);
+					sbm.append("\t#Iteraciones: " + count);
 					System.out.println(sbm);
 					index = Weather.processLabels(index, data, labelSequence, count, level+1);
 				}
@@ -322,6 +325,7 @@ public class Weather {
 		return bitLong / (scale==0? 1 : (scale*10));
 	}
 
+	@SuppressWarnings("unused")
 	private static String printBitSet(final byte[] bitSet, final int beginBit, final int offSet) {
 		StringBuffer sb = new StringBuffer();
 		for (int i = 0; i < offSet; i++) {
@@ -330,6 +334,7 @@ public class Weather {
 		return sb.toString();
 	}
 
+	@SuppressWarnings("unused")
 	private static String formattedBitSet(final byte[] bitSet) {
 		StringBuffer sb = new StringBuffer();
 		for (int i = 0; i < bitSet.length * 8; i++) {
