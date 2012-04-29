@@ -6,32 +6,39 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
+import org.apache.log4j.Logger;
+
 public class Weather {
 
-	private static final int FINAL_STEP = (((byte) 0x00 & 0xFF) << 24)
-			+ (((byte) 0x37 & 0xFF) << 16) + (((byte) 0x37 & 0xFF) << 8)
-			+ (((byte) 0x37 & 0xFF) << 0);
+	private static Logger log = Logger.getLogger(Weather.class);
+
+	private static final int FINAL_STEP = (((byte) 0x00 & 0xFF) << 24) + (((byte) 0x37 & 0xFF) << 16) + (((byte) 0x37 & 0xFF) << 8) + (((byte) 0x37 & 0xFF) << 0);
 
 	private static int BUFR_SECTION = 0;
+
+	private static boolean imagenFlag = false;
+	private static int[][] imagen = new int[480][480];
 	public static final Properties props = new Properties();
 
 	public static void main(final String[] args) {
 
-		//		System.out.println("" + Weather.bitSetToInt(new byte[]{(byte) 0x07, (byte) 0xDC},0,16,0));
-		//		System.out.println("" + Weather.int3(new byte[]{(byte) 0x00, (byte) 0x07, (byte) 0xDC}));
-		//		System.out.println(Weather.printBitSet(new byte[]{(byte) 0x07, (byte) 0xDC},0,16));
-		//		System.exit(0);
+		// System.out.println("" + Weather.bitSetToInt(new byte[]{(byte) 0x07,
+		// (byte) 0xDC},0,16,0));
+		// System.out.println("" + Weather.int3(new byte[]{(byte) 0x00, (byte)
+		// 0x07, (byte) 0xDC}));
+		// System.out.println(Weather.printBitSet(new byte[]{(byte) 0x07, (byte)
+		// 0xDC},0,16));
+		// System.exit(0);
 
 		try {
 			// Cargamos properties
 
-			final InputStream porpertiesIs = Weather.class.getClassLoader()
-					.getResourceAsStream("sizes2.properties");
+			final InputStream porpertiesIs = Weather.class.getClassLoader().getResourceAsStream("sizes2.properties");
 			Weather.props.load(porpertiesIs);
 
 			// Cargamos fichero de datos
 			final InputStream is = Weather.class.getClassLoader()
-					//					.getResourceAsStream("COR110915203801.BPPI001");
+			// .getResourceAsStream("COR110915203801.BPPI001");
 					.getResourceAsStream("COR120420161801.BPPI001");
 
 			boolean section = false;
@@ -50,8 +57,7 @@ public class Weather {
 					Weather.BUFR_SECTION++;
 
 				} else {
-					if (Weather.BUFR_SECTION == SectionType.OPTIONAL_SECTION.getId()
-							&& !optionalPresence) {
+					if (Weather.BUFR_SECTION == SectionType.OPTIONAL_SECTION.getId() && !optionalPresence) {
 						Weather.BUFR_SECTION++;
 					}
 					section = true;
@@ -61,8 +67,7 @@ public class Weather {
 				final StringBuffer sb = new StringBuffer();
 
 				if (section) {
-					if (Weather.BUFR_SECTION == SectionType.INDICATOR_SECTION
-							.getId()) {
+					if (Weather.BUFR_SECTION == SectionType.INDICATOR_SECTION.getId()) {
 						ByteBuffer bb = ByteBuffer.wrap(data);
 						byte[] dst = new byte[4];
 						bb.get(dst, 0, 4);
@@ -72,12 +77,9 @@ public class Weather {
 						bb.get(dst, 0, 3);
 						int totalLength = Weather.int3(dst);
 						byte bufrVersion = bb.get();
-						sb.append("\n\t· totalLength ").append(totalLength)
-						.append("\n\t· bufrVersion ")
-						.append(bufrVersion);
+						sb.append("\n\t· totalLength ").append(totalLength).append("\n\t· bufrVersion ").append(bufrVersion);
 
-					} else if (Weather.BUFR_SECTION == SectionType.IDENTIFICATION_SECTION
-							.getId()) {
+					} else if (Weather.BUFR_SECTION == SectionType.IDENTIFICATION_SECTION.getId()) {
 						ByteBuffer bb = ByteBuffer.wrap(data);
 						// Bufr master table (zero if standard WMO FM 94-IX BUFR
 						// tables are used)
@@ -103,26 +105,14 @@ public class Weather {
 						if (optionalSection != (byte) 0) {
 							optionalPresence = true;
 						}
-						sb
-						.append("\n\t· masterTableNumber ").append(masterTableNumber)
-						.append("\n\t· centre ").append(centre)
-						.append("\n\t· subCentre ").append(subCentre)
-						.append("\n\t· updateSequence ").append(updateSequence)
-						.append("\n\t· optionalSection ").append(optionalSection)
-						.append("\n\t· dataCategoryTableA ").append(dataCategoryTableA)
-						.append("\n\t· internationalDataSubCategory ").append(internationalDataSubCategory)
-						.append("\n\t· localSubCategory ").append(localSubCategory)
-						.append("\n\t· masterTableVersion ").append(masterTableVersion)
-						.append("\n\t· localTableVersion ").append(localTableVersion)
-						.append("\n\t· year ").append(year)
-						.append("\n\t· month ").append(month)
-						.append("\n\t· day ").append(day)
-						.append("\n\t· hour ").append(hour)
-						.append("\n\t· minute ").append(minute)
-						.append("\n\t· second ").append(second);
+						sb.append("\n\t· masterTableNumber ").append(masterTableNumber).append("\n\t· centre ").append(centre).append("\n\t· subCentre ").append(subCentre)
+								.append("\n\t· updateSequence ").append(updateSequence).append("\n\t· optionalSection ").append(optionalSection).append("\n\t· dataCategoryTableA ")
+								.append(dataCategoryTableA).append("\n\t· internationalDataSubCategory ").append(internationalDataSubCategory).append("\n\t· localSubCategory ")
+								.append(localSubCategory).append("\n\t· masterTableVersion ").append(masterTableVersion).append("\n\t· localTableVersion ").append(localTableVersion)
+								.append("\n\t· year ").append(year).append("\n\t· month ").append(month).append("\n\t· day ").append(day).append("\n\t· hour ").append(hour)
+								.append("\n\t· minute ").append(minute).append("\n\t· second ").append(second);
 
-					} else if (Weather.BUFR_SECTION == SectionType.LABELS_SECTION
-							.getId()) {
+					} else if (Weather.BUFR_SECTION == SectionType.LABELS_SECTION.getId()) {
 						ByteBuffer bb = ByteBuffer.wrap(data);
 						// reserved 0
 						bb.get();
@@ -132,9 +122,7 @@ public class Weather {
 						byte compressedDataMask = (byte) 0x40;
 						boolean observed = (dataType & observedDataMask) == observedDataMask;
 						boolean compressed = (dataType & compressedDataMask) == compressedDataMask;
-						sb.append("\n\t· dataSubsets ").append(dataSubsets)
-						.append("\n\t· observed ").append(observed)
-						.append("\n\t· compressed ").append(compressed).append("\n");
+						sb.append("\n\t· dataSubsets ").append(dataSubsets).append("\n\t· observed ").append(observed).append("\n\t· compressed ").append(compressed).append("\n");
 
 						while (bb.position() < bb.limit() - 1) {
 							Weather.getLabel(bb.get(), bb.get(), labels, 1);
@@ -147,23 +135,26 @@ public class Weather {
 					} else if (Weather.BUFR_SECTION == SectionType.DATA_SECTION.getId()) {
 
 						// bloque pruebas
-						//System.out.println("DataBitSet:" + Weather.formattedBitSet(data));
+						// System.out.println("DataBitSet:" +
+						// Weather.formattedBitSet(data));
 
-						//Primer byte reservado --> index = 8
+						// Primer byte reservado --> index = 8
 						int index = 8;
 						final Label[] arrayLabels = labels.toArray(new Label[0]);
 						index = Weather.processLabels(index, data, arrayLabels, 1, 1);
 						// bloque pruebas
-						sb.append("\n\t Interpretados:" + index + " Bits = " + ((index/8)+(index%8==0?0:1))
-								+ " BYTES ### Data[" + data.length + "]:\t").append(Weather.getHex(data));
+						sb.append("\n\t Interpretados:" + index + " Bits = " + ((index / 8) + (index % 8 == 0 ? 0 : 1)) + " BYTES ### Data[" + data.length + "]:\t").append(Weather.getHex(data));
 					} else if (Weather.BUFR_SECTION == SectionType.END_SECTION.getId()) {
 						// Nada
+						BMP bmp = new BMP();
+						bmp.saveBMP("c:/imagenPrueba.bmp", imagen);
 					}
 				} else {
 					// Nada sb.append(Weather.getHex(data));
 				}
 
-				if(sb.length() > 0 ) {
+				if (sb.length() > 0) {
+
 					System.out.println("@@[" + SectionType.values()[Weather.BUFR_SECTION] + "]" + sb + "\n\n");
 				}
 
@@ -178,94 +169,152 @@ public class Weather {
 
 	}
 
+	static int column = 0;
+	static Integer row = null;
+	static int dataRepetition = 0;
+	static Integer dataToRepeat = 0;
 
 	private static int processLabels(int index, final byte[] data, final Label[] arrayLabels, final int repeats, final int level) {
 		String levelSt = "";
-		for(int n=0; n < level; n++) {
+		for (int n = 0; n < level; n++) {
 			levelSt += "\t";
 		}
-		for(int n=0; n < repeats; n++) {
-			System.out.println(levelSt + "## Nº" + (n+1));
-			for (int arrayIndex=0; arrayIndex < arrayLabels.length; arrayIndex++) {
+		for (int n = 0; n < repeats; n++) {
+			System.out.println(levelSt + "## N�" + (n + 1));
+
+			if (imagenFlag)
+				log.debug("## N�" + (n + 1));
+			for (int arrayIndex = 0; arrayIndex < arrayLabels.length; arrayIndex++) {
 				Label label = arrayLabels[arrayIndex];
 				System.out.println(levelSt + label + " SIZE:" + label.size + " SCALE:" + label.scale);
 
-				if(label.type == LabelType.DESCRIPTOR) {
-					// escala asociada a etiquetas:  9087 con escala 2 representa a valor 90.87
-					System.out.println(levelSt + "\t" +
-							(Math.abs(label.scale) == 1 ?
-									(label.size < 33 ?
-											"--> INT:" + Weather.bitSetToInt(data, index, label.size, label.scale)
-											: "--> LONG:" + Weather.bitSetToLong(data, index, label.size, label.scale)
-											) : ( "--> DOUBLE:" + Weather.bitSetToDouble(data, index, label.size, label.scale))
-									)
-									+ (Weather.isUnknownValue(data, index, label.size) ? "\t# NO DATA #" : "" )
-									//+ "\tBitSet: " + Weather.printBitSet(data, index, label.size)
-							)
-							;
+				if (label.labelPropKey.equals("3.21.193")) {
+					System.out.println("EMPEZAMOS CON IMAGEN");
+					imagenFlag = true;
+				}
+
+				if (label.type == LabelType.DESCRIPTOR) {
+					// escala asociada a etiquetas: 9087 con escala 2 representa
+					// a valor 90.87
+					System.out.println(levelSt
+							+ "\t"
+							+ (Math.abs(label.scale) == 1 ? (label.size < 33 ? "--> INT:" + Weather.bitSetToInt(data, index, label.size, label.scale) : "--> LONG:"
+									+ Weather.bitSetToLong(data, index, label.size, label.scale)) : ("--> DOUBLE:" + Weather.bitSetToDouble(data, index, label.size, label.scale)))
+							+ (Weather.isUnknownValue(data, index, label.size) ? "\t# NO DATA #" : "")
+					// + "\tBitSet: " + Weather.printBitSet(data, index,
+					// label.size)
+							);
+					if (imagenFlag)
+						log.debug("data:+"
+								+ label.labelPropKey
+								+ " value:"
+								+ (Math.abs(label.scale) == 1 ? (label.size < 33 ? "--> INT:" + Weather.bitSetToInt(data, index, label.size, label.scale) : "--> LONG:"
+										+ Weather.bitSetToLong(data, index, label.size, label.scale)) : ("--> DOUBLE:" + Weather.bitSetToDouble(data, index, label.size, label.scale)))
+								+ (Weather.isUnknownValue(data, index, label.size) ? "\t# NO DATA #" : ""));
+
+					if (label.labelPropKey.equals("0.5.31")) {
+						// estamos empezando una fila
+						column = 0;
+						if (row == null)
+							row = 0;
+						else
+							row++;
+						log.debug("Iniciando fila [" + row + "]");
+					} else if (label.labelPropKey.equals("0.31.12")) {
+						dataRepetition = (int) Weather.bitSetToDouble(data, index, label.size, label.scale);
+						dataToRepeat = null;
+						log.debug("longitud [" + dataRepetition + "]");
+					} else if (label.labelPropKey.equals("0.30.2")) {
+						if (dataToRepeat != null) {
+							log.debug("dato solo en columna [" + column + "] valor [" + Weather.bitSetToDouble(data, index, label.size, label.scale) + "]");
+							imagen[row][column] = (int) Weather.bitSetToDouble(data, index, label.size, label.scale);
+							column++;
+						} else {
+							log.debug("dato en columna [" + column + "] y tama�o [" + dataRepetition + "] valor [" + Weather.bitSetToDouble(data, index, label.size, label.scale) + "]");
+
+							if (column + dataRepetition > 480) {
+								log.debug("ERROR, COLUMNA DE [" + (column + dataRepetition) + "], cambiamos a dataRepetition = 1!");
+								dataRepetition = 1;
+							}
+							for (int col = column; col < (column + dataRepetition) && col < 480; col++) {
+								imagen[row][col] = (int) Weather.bitSetToDouble(data, index, label.size, label.scale);
+							}
+							if (column + dataRepetition > 480) {
+								log.debug("ERROR, COLUMNA DE [" + (column + dataRepetition) + "]");
+								column = 480;
+							} else
+								column = column + dataRepetition;
+						}
+					}
+
 				}
 
 				index += label.size;
 
-
-				if(label.type == LabelType.MULTIPLE) {
-					// LabelType.MULTIPLE; 1.Y.0 --> la siguiente etiqueta es el contador de repeticiones, las Y-siguientes la secuencia a repetir
+				if (label.type == LabelType.MULTIPLE) {
+					// LabelType.MULTIPLE; 1.Y.0 --> la siguiente etiqueta es el
+					// contador de repeticiones, las Y-siguientes la secuencia a
+					// repetir
 					arrayIndex++;
 					Label countLabel = arrayLabels[arrayIndex];
 					Label[] labelSequence = new Label[label.x];
 
 					StringBuffer sbm = new StringBuffer(levelSt + "@@ MULTIPLE:"
-							//+ " index de labels:" + arrayIndex
+					// + " index de labels:" + arrayIndex
 							+ " Contador en " + countLabel + " secuencia --> ");
+
 					int repIndex = 0;
 					arrayIndex++;
-					for(int i = arrayIndex; i< arrayIndex+label.x; i++){
+					for (int i = arrayIndex; i < arrayIndex + label.x; i++) {
 						sbm.append(arrayLabels[i]).append(" | ");
 						labelSequence[repIndex] = arrayLabels[i];
 						repIndex++;
 					}
 					Integer count = Weather.bitSetToInt(data, index, countLabel.size, countLabel.scale);
 					index += countLabel.size;
-					arrayIndex += label.x -1;
+					arrayIndex += label.x - 1;
 					sbm.append("\t#Iteraciones: " + count);
+
+					if (imagenFlag)
+						log.debug("Multiple :" + countLabel.labelPropKey + " iteracciones:" + count);
+
 					System.out.println(sbm);
-					index = Weather.processLabels(index, data, labelSequence, count, level+1);
+					index = Weather.processLabels(index, data, labelSequence, count, level + 1);
 				}
 
 			}
 		}
 		return index;
 	}
-
 	private static void getLabel(final byte b0, final byte b1, final List<Label> labels, final int nTimes) {
-		final Label currentLabel = new Label(new byte[] { b0, b1 });
+		final Label currentLabel = new Label(new byte[]{b0, b1});
 		Weather.getLabel(currentLabel.type.id, currentLabel.x, currentLabel.y, labels, nTimes);
 	}
 
 	private static void getLabel(final int labelType, final int x, final int y, final List<Label> labels, final int nTimes) {
-		Label currentLabel = new Label(labelType,x,y);
-		for(int k = 0; k<nTimes; k++) {
+		Label currentLabel = new Label(labelType, x, y);
+		for (int k = 0; k < nTimes; k++) {
 			labels.add(currentLabel);
 
-			if(currentLabel.type == LabelType.SEQUENCE_DESCRIPTOR_TABLE_D) {
+			if (currentLabel.type == LabelType.SEQUENCE_DESCRIPTOR_TABLE_D) {
 				Weather.getSequenceLabel(currentLabel, labels, 1);
 			}
-			// LabelType.MULTIPLE; realmente, representan una estructura, la repeticion es en tiempo de interpretacion de datos  *ver Info_desarrollos/ProtocoloBUFR/bufr_sw_desc.pdf
+			// LabelType.MULTIPLE; realmente, representan una estructura, la
+			// repeticion es en tiempo de interpretacion de datos *ver
+			// Info_desarrollos/ProtocoloBUFR/bufr_sw_desc.pdf
 		}
 	}
 
 	private static void getSequenceLabel(final Label sequenceLabel, final List<Label> labels, final int nTimes) {
-		for(int k = 0; k<nTimes; k++) {
-			if(Weather.props.containsKey(sequenceLabel.labelPropKey)) {
+		for (int k = 0; k < nTimes; k++) {
+			if (Weather.props.containsKey(sequenceLabel.labelPropKey)) {
 				final String sequence = Weather.props.getProperty(sequenceLabel.labelPropKey);
-				final String [] subLabels = sequence.split(",");
-				for(final String subLabel : subLabels) {
+				final String[] subLabels = sequence.split(",");
+				for (final String subLabel : subLabels) {
 					final String[] labelKey = subLabel.split(":")[0].split("\\.");
-					final int instances = subLabel.contains(":") ? Integer.valueOf(subLabel.split(":")[1]): 1;
+					final int instances = subLabel.contains(":") ? Integer.valueOf(subLabel.split(":")[1]) : 1;
 
-					Weather.getLabel(
-							Integer.valueOf(labelKey[0]), Integer.valueOf(labelKey[1]), Integer.valueOf(labelKey[2]),
-							labels, instances);
+					Weather.getLabel(Integer.valueOf(labelKey[0]), Integer.valueOf(labelKey[1]), Integer.valueOf(labelKey[2]), labels, instances);
 				}
 			} else {
 				System.out.println("@@@ NO EXISTE PROPERTY " + sequenceLabel.labelPropKey);
@@ -273,32 +322,25 @@ public class Weather {
 		}
 	}
 
-
-
-
 	private static int int3(final byte[] data) {
-		return data.length < 3 ? Integer.MIN_VALUE
-				: (((byte) 0x00 & 0xFF) << 24) + ((data[0] & 0xFF) << 16)
-				+ ((data[1] & 0xFF) << 8) + ((data[2] & 0xFF) << 0);
+		return data.length < 3 ? Integer.MIN_VALUE : (((byte) 0x00 & 0xFF) << 24) + ((data[0] & 0xFF) << 16) + ((data[1] & 0xFF) << 8) + ((data[2] & 0xFF) << 0);
 	}
 
 	public static boolean getBit(final byte[] bitSet, final int i) {
-		return (bitSet[i / 8] & (1 << (8 - (i % 8) -1))) != 0;
+		return (bitSet[i / 8] & (1 << (8 - (i % 8) - 1))) != 0;
 	}
 
 	public static int bitSetToInt(final byte[] bitSet, final int beginBit, final int offSet, final int scale) {
 		int bitInteger = 0;
 		for (int i = 0; i < offSet; i++) {
-			bitInteger += Weather.getBit(bitSet, beginBit + i)
-					? (1 << (offSet - (i + 1)))
-							: 0;
+			bitInteger += Weather.getBit(bitSet, beginBit + i) ? (1 << (offSet - (i + 1))) : 0;
 		}
-		return bitInteger / (scale==0? 1 : (scale*10));
+		return bitInteger / (scale == 0 ? 1 : (scale * 10));
 	}
 
 	public static boolean isUnknownValue(final byte[] bitSet, final int beginBit, final int offSet) {
 		for (int i = 0; i < offSet; i++) {
-			if(!Weather.getBit(bitSet, beginBit + i)) {
+			if (!Weather.getBit(bitSet, beginBit + i)) {
 				return false;
 			}
 		}
@@ -308,28 +350,24 @@ public class Weather {
 	public static long bitSetToLong(final byte[] bitSet, final int beginBit, final int offSet, final int scale) {
 		long bitLong = 0;
 		for (int i = 0; i < offSet; i++) {
-			bitLong += Weather.getBit(bitSet, beginBit + i)
-					? (1L << (offSet - (i + 1)))
-							: 0L;
+			bitLong += Weather.getBit(bitSet, beginBit + i) ? (1L << (offSet - (i + 1))) : 0L;
 		}
-		return bitLong / (scale==0? 1l : (scale*10));
+		return bitLong / (scale == 0 ? 1l : (scale * 10));
 	}
 
 	public static double bitSetToDouble(final byte[] bitSet, final int beginBit, final int offSet, final int scale) {
 		double bitLong = 0;
 		for (int i = 0; i < offSet; i++) {
-			bitLong += Weather.getBit(bitSet, beginBit + i)
-					? (1L << (offSet - (i + 1)))
-							: 0L;
+			bitLong += Weather.getBit(bitSet, beginBit + i) ? (1L << (offSet - (i + 1))) : 0L;
 		}
-		return bitLong / (scale==0? 1 : (scale*10));
+		return bitLong / (scale == 0 ? 1 : (scale * 10));
 	}
 
 	@SuppressWarnings("unused")
 	private static String printBitSet(final byte[] bitSet, final int beginBit, final int offSet) {
 		StringBuffer sb = new StringBuffer();
 		for (int i = 0; i < offSet; i++) {
-			sb.append((Weather.getBit(bitSet, beginBit + i)) ? "1": "0");
+			sb.append((Weather.getBit(bitSet, beginBit + i)) ? "1" : "0");
 		}
 		return sb.toString();
 	}
@@ -339,11 +377,10 @@ public class Weather {
 		StringBuffer sb = new StringBuffer();
 		for (int i = 0; i < bitSet.length * 8; i++) {
 			sb.append((i % 8 == 0) ? "\n\t" : "");
-			sb.append((Weather.getBit(bitSet, i)) ? "1": "0");
+			sb.append((Weather.getBit(bitSet, i)) ? "1" : "0");
 		}
 		return sb.toString();
 	}
-
 
 	private static final String HEXES = "0123456789ABCDEF";
 
@@ -353,8 +390,7 @@ public class Weather {
 		}
 		final StringBuilder hex = new StringBuilder(2 * raw.length);
 		for (final byte b : raw) {
-			hex.append(Weather.HEXES.charAt((b & 0xF0) >> 4))
-			.append(Weather.HEXES.charAt((b & 0x0F))).append(" ");
+			hex.append(Weather.HEXES.charAt((b & 0xF0) >> 4)).append(Weather.HEXES.charAt((b & 0x0F))).append(" ");
 		}
 		return hex.toString();
 	}
