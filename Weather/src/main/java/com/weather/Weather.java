@@ -10,23 +10,26 @@ import org.apache.log4j.Logger;
 
 public class Weather {
 
-	private static Logger log = Logger.getLogger(Weather.class);
+	private static Logger LOG = Logger.getLogger(Weather.class);
 
 	private static final int FINAL_STEP = (((byte) 0x00 & 0xFF) << 24) + (((byte) 0x37 & 0xFF) << 16) + (((byte) 0x37 & 0xFF) << 8) + (((byte) 0x37 & 0xFF) << 0);
 
 	private static int BUFR_SECTION = 0;
 
 	private static boolean imagenFlag = false;
+
+	//TODO 480 es numero magico (valido para esta prueba). Obtener el numero real de las etiquetas en la seccion correspondiente.
 	private static int[][] imagen = new int[480][480];
+
 	public static final Properties props = new Properties();
 
 	public static void main(final String[] args) {
 
-		// System.out.println("" + Weather.bitSetToInt(new byte[]{(byte) 0x07,
+		// Weather.log.debug("" + Weather.bitSetToInt(new byte[]{(byte) 0x07,
 		// (byte) 0xDC},0,16,0));
-		// System.out.println("" + Weather.int3(new byte[]{(byte) 0x00, (byte)
+		// Weather.log.debug("" + Weather.int3(new byte[]{(byte) 0x00, (byte)
 		// 0x07, (byte) 0xDC}));
-		// System.out.println(Weather.printBitSet(new byte[]{(byte) 0x07, (byte)
+		// Weather.log.debug(Weather.printBitSet(new byte[]{(byte) 0x07, (byte)
 		// 0xDC},0,16));
 		// System.exit(0);
 
@@ -38,7 +41,7 @@ public class Weather {
 
 			// Cargamos fichero de datos
 			final InputStream is = Weather.class.getClassLoader()
-			// .getResourceAsStream("COR110915203801.BPPI001");
+					// .getResourceAsStream("COR110915203801.BPPI001");
 					.getResourceAsStream("COR120420161801.BPPI001");
 
 			boolean section = false;
@@ -106,11 +109,11 @@ public class Weather {
 							optionalPresence = true;
 						}
 						sb.append("\n\t· masterTableNumber ").append(masterTableNumber).append("\n\t· centre ").append(centre).append("\n\t· subCentre ").append(subCentre)
-								.append("\n\t· updateSequence ").append(updateSequence).append("\n\t· optionalSection ").append(optionalSection).append("\n\t· dataCategoryTableA ")
-								.append(dataCategoryTableA).append("\n\t· internationalDataSubCategory ").append(internationalDataSubCategory).append("\n\t· localSubCategory ")
-								.append(localSubCategory).append("\n\t· masterTableVersion ").append(masterTableVersion).append("\n\t· localTableVersion ").append(localTableVersion)
-								.append("\n\t· year ").append(year).append("\n\t· month ").append(month).append("\n\t· day ").append(day).append("\n\t· hour ").append(hour)
-								.append("\n\t· minute ").append(minute).append("\n\t· second ").append(second);
+						.append("\n\t· updateSequence ").append(updateSequence).append("\n\t· optionalSection ").append(optionalSection).append("\n\t· dataCategoryTableA ")
+						.append(dataCategoryTableA).append("\n\t· internationalDataSubCategory ").append(internationalDataSubCategory).append("\n\t· localSubCategory ")
+						.append(localSubCategory).append("\n\t· masterTableVersion ").append(masterTableVersion).append("\n\t· localTableVersion ").append(localTableVersion)
+						.append("\n\t· year ").append(year).append("\n\t· month ").append(month).append("\n\t· day ").append(day).append("\n\t· hour ").append(hour)
+						.append("\n\t· minute ").append(minute).append("\n\t· second ").append(second);
 
 					} else if (Weather.BUFR_SECTION == SectionType.LABELS_SECTION.getId()) {
 						ByteBuffer bb = ByteBuffer.wrap(data);
@@ -135,7 +138,7 @@ public class Weather {
 					} else if (Weather.BUFR_SECTION == SectionType.DATA_SECTION.getId()) {
 
 						// bloque pruebas
-						// System.out.println("DataBitSet:" +
+						// Weather.log.debug("DataBitSet:" +
 						// Weather.formattedBitSet(data));
 
 						// Primer byte reservado --> index = 8
@@ -147,7 +150,7 @@ public class Weather {
 					} else if (Weather.BUFR_SECTION == SectionType.END_SECTION.getId()) {
 						// Nada
 						BMP bmp = new BMP();
-						bmp.saveBMP("c:/imagenPrueba.bmp", imagen);
+						bmp.saveBMP("Salida/imagenPrueba.bmp", Weather.imagen);
 					}
 				} else {
 					// Nada sb.append(Weather.getHex(data));
@@ -155,13 +158,13 @@ public class Weather {
 
 				if (sb.length() > 0) {
 
-					System.out.println("@@[" + SectionType.values()[Weather.BUFR_SECTION] + "]" + sb + "\n\n");
+					Weather.LOG.debug("@@[" + SectionType.values()[Weather.BUFR_SECTION] + "]" + sb + "\n\n");
 				}
 
 				data = new byte[step];
 
 			}
-			System.out.println("Fin de proceso");
+			Weather.LOG.debug("Fin de proceso");
 
 		} catch (final Exception e) {
 			e.printStackTrace();
@@ -180,70 +183,74 @@ public class Weather {
 			levelSt += "\t";
 		}
 		for (int n = 0; n < repeats; n++) {
-			System.out.println(levelSt + "## N�" + (n + 1));
+			Weather.LOG.debug(levelSt + "## Nº" + (n + 1));
 
-			if (imagenFlag)
-				log.debug("## N�" + (n + 1));
+			if (Weather.imagenFlag) {
+				Weather.LOG.debug("## Nº" + (n + 1));
+			}
 			for (int arrayIndex = 0; arrayIndex < arrayLabels.length; arrayIndex++) {
 				Label label = arrayLabels[arrayIndex];
-				System.out.println(levelSt + label + " SIZE:" + label.size + " SCALE:" + label.scale);
+				Weather.LOG.debug(levelSt + label + " SIZE:" + label.size + " SCALE:" + label.scale);
 
 				if (label.labelPropKey.equals("3.21.193")) {
-					System.out.println("EMPEZAMOS CON IMAGEN");
-					imagenFlag = true;
+					Weather.LOG.debug("EMPEZAMOS CON IMAGEN");
+					Weather.imagenFlag = true;
 				}
 
 				if (label.type == LabelType.DESCRIPTOR) {
 					// escala asociada a etiquetas: 9087 con escala 2 representa
 					// a valor 90.87
-					System.out.println(levelSt
+					Weather.LOG.debug(levelSt
 							+ "\t"
 							+ (Math.abs(label.scale) == 1 ? (label.size < 33 ? "--> INT:" + Weather.bitSetToInt(data, index, label.size, label.scale) : "--> LONG:"
 									+ Weather.bitSetToLong(data, index, label.size, label.scale)) : ("--> DOUBLE:" + Weather.bitSetToDouble(data, index, label.size, label.scale)))
-							+ (Weather.isUnknownValue(data, index, label.size) ? "\t# NO DATA #" : "")
-					// + "\tBitSet: " + Weather.printBitSet(data, index,
-					// label.size)
+									+ (Weather.isUnknownValue(data, index, label.size) ? "\t# NO DATA #" : "")
+									// + "\tBitSet: " + Weather.printBitSet(data, index,
+									// label.size)
 							);
-					if (imagenFlag)
-						log.debug("data:+"
+					if (Weather.imagenFlag) {
+						Weather.LOG.debug("data:+"
 								+ label.labelPropKey
 								+ " value:"
 								+ (Math.abs(label.scale) == 1 ? (label.size < 33 ? "--> INT:" + Weather.bitSetToInt(data, index, label.size, label.scale) : "--> LONG:"
 										+ Weather.bitSetToLong(data, index, label.size, label.scale)) : ("--> DOUBLE:" + Weather.bitSetToDouble(data, index, label.size, label.scale)))
-								+ (Weather.isUnknownValue(data, index, label.size) ? "\t# NO DATA #" : ""));
+										+ (Weather.isUnknownValue(data, index, label.size) ? "\t# NO DATA #" : ""));
+					}
 
 					if (label.labelPropKey.equals("0.5.31")) {
 						// estamos empezando una fila
-						column = 0;
-						if (row == null)
-							row = 0;
-						else
-							row++;
-						log.debug("Iniciando fila [" + row + "]");
-					} else if (label.labelPropKey.equals("0.31.12")) {
-						dataRepetition = (int) Weather.bitSetToDouble(data, index, label.size, label.scale);
-						dataToRepeat = null;
-						log.debug("longitud [" + dataRepetition + "]");
-					} else if (label.labelPropKey.equals("0.30.2")) {
-						if (dataToRepeat != null) {
-							log.debug("dato solo en columna [" + column + "] valor [" + Weather.bitSetToDouble(data, index, label.size, label.scale) + "]");
-							imagen[row][column] = (int) Weather.bitSetToDouble(data, index, label.size, label.scale);
-							column++;
+						Weather.column = 0;
+						if (Weather.row == null) {
+							Weather.row = 0;
 						} else {
-							log.debug("dato en columna [" + column + "] y tama�o [" + dataRepetition + "] valor [" + Weather.bitSetToDouble(data, index, label.size, label.scale) + "]");
+							Weather.row++;
+						}
+						Weather.LOG.debug("Iniciando fila [" + Weather.row + "]");
+					} else if (label.labelPropKey.equals("0.31.12")) {
+						Weather.dataRepetition = (int) Weather.bitSetToDouble(data, index, label.size, label.scale);
+						Weather.dataToRepeat = null;
+						Weather.LOG.debug("longitud [" + Weather.dataRepetition + "]");
+					} else if (label.labelPropKey.equals("0.30.2")) {
+						if (Weather.dataToRepeat != null) {
+							Weather.LOG.debug("dato solo en columna [" + Weather.column + "] valor [" + Weather.bitSetToDouble(data, index, label.size, label.scale) + "]");
+							Weather.imagen[Weather.row][Weather.column] = (int) Weather.bitSetToDouble(data, index, label.size, label.scale);
+							Weather.column++;
+						} else {
+							Weather.LOG.debug("dato en columna [" + Weather.column + "] y tamaño [" + Weather.dataRepetition + "] valor [" + Weather.bitSetToDouble(data, index, label.size, label.scale) + "]");
 
-							if (column + dataRepetition > 480) {
-								log.debug("ERROR, COLUMNA DE [" + (column + dataRepetition) + "], cambiamos a dataRepetition = 1!");
-								dataRepetition = 1;
+							if (Weather.column + Weather.dataRepetition > 480) {
+								Weather.LOG.debug("ERROR, COLUMNA DE [" + (Weather.column + Weather.dataRepetition) + "], cambiamos a dataRepetition = 1!");
+								Weather.dataRepetition = 1;
 							}
-							for (int col = column; col < (column + dataRepetition) && col < 480; col++) {
-								imagen[row][col] = (int) Weather.bitSetToDouble(data, index, label.size, label.scale);
+							for (int col = Weather.column; col < (Weather.column + Weather.dataRepetition) && col < 480; col++) {
+								Weather.imagen[Weather.row][col] = (int) Weather.bitSetToDouble(data, index, label.size, label.scale);
 							}
-							if (column + dataRepetition > 480) {
-								log.debug("ERROR, COLUMNA DE [" + (column + dataRepetition) + "]");
-								column = 480;
-							} else
-								column = column + dataRepetition;
+							if (Weather.column + Weather.dataRepetition > 480) {
+								Weather.LOG.debug("ERROR, COLUMNA DE [" + (Weather.column + Weather.dataRepetition) + "]");
+								Weather.column = 480;
+							} else {
+								Weather.column = Weather.column + Weather.dataRepetition;
+							}
 						}
 					}
 
@@ -260,7 +267,7 @@ public class Weather {
 					Label[] labelSequence = new Label[label.x];
 
 					StringBuffer sbm = new StringBuffer(levelSt + "@@ MULTIPLE:"
-					// + " index de labels:" + arrayIndex
+							// + " index de labels:" + arrayIndex
 							+ " Contador en " + countLabel + " secuencia --> ");
 
 					int repIndex = 0;
@@ -275,10 +282,11 @@ public class Weather {
 					arrayIndex += label.x - 1;
 					sbm.append("\t#Iteraciones: " + count);
 
-					if (imagenFlag)
-						log.debug("Multiple :" + countLabel.labelPropKey + " iteracciones:" + count);
+					if (Weather.imagenFlag) {
+						Weather.LOG.debug("Multiple :" + countLabel.labelPropKey + " iteracciones:" + count);
+					}
 
-					System.out.println(sbm);
+					Weather.LOG.debug(sbm);
 					index = Weather.processLabels(index, data, labelSequence, count, level + 1);
 				}
 
@@ -317,7 +325,7 @@ public class Weather {
 					Weather.getLabel(Integer.valueOf(labelKey[0]), Integer.valueOf(labelKey[1]), Integer.valueOf(labelKey[2]), labels, instances);
 				}
 			} else {
-				System.out.println("@@@ NO EXISTE PROPERTY " + sequenceLabel.labelPropKey);
+				Weather.LOG.debug("@@@ NO EXISTE PROPERTY " + sequenceLabel.labelPropKey);
 			}
 		}
 	}

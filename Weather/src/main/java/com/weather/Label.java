@@ -1,6 +1,10 @@
 package com.weather;
 
+import org.apache.log4j.Logger;
+
 public class Label {
+
+	private static Logger LOG = Logger.getLogger(Label.class);
 
 	final LabelType type;
 	final int x;
@@ -41,7 +45,7 @@ public class Label {
 				size = Integer.parseInt(labelProps.split(";")[0]);
 				scale = labelProps.contains(";") ? Integer.valueOf(labelProps.split(";")[1]): 0;
 			} else {
-				System.out.println("@@@ NO EXISTE PROPERTY " + labelPropKey);
+				Label.LOG.debug("@@@ NO EXISTE PROPERTY " + labelPropKey);
 				size = 0;
 				scale = 0;
 			}
