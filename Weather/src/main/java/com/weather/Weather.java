@@ -40,10 +40,13 @@ public class Weather {
 			final InputStream porpertiesIs = Weather.class.getClassLoader().getResourceAsStream("sizes2.properties");
 			Weather.props.load(porpertiesIs);
 
+			final String fileName =
+					//"COR110915203801.BPPI001"
+					//"COR120420161801.BPPI001"
+					"COR120501155801.BPPI001";
 			// Cargamos fichero de datos
 			final InputStream is = Weather.class.getClassLoader()
-					// .getResourceAsStream("COR110915203801.BPPI001");
-					.getResourceAsStream("COR120420161801.BPPI001");
+					.getResourceAsStream(fileName);
 
 			boolean section = false;
 
@@ -150,7 +153,7 @@ public class Weather {
 						sb.append("\n\t Interpretados:" + index + " Bits = " + ((index / 8) + (index % 8 == 0 ? 0 : 1)) + " BYTES ### Data[" + data.length + "]:\t").append(Weather.getHex(data));
 					} else if (Weather.BUFR_SECTION == SectionType.END_SECTION.getId()) {
 						BMP bmp = new BMP();
-						bmp.saveBMP("Salida/imagenPrueba.bmp", Weather.imagen);
+						bmp.saveBMP("Salida/" + fileName + ".bmp", Weather.imagen);
 
 						/*TODO Android:
 							try {
