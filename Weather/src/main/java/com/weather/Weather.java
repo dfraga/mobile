@@ -18,8 +18,9 @@ public class Weather {
 
 	private static boolean imagenFlag = false;
 
-	//TODO 480 es numero magico (valido para esta prueba). Obtener el numero real de las etiquetas en la seccion correspondiente.
-	private static int[][] imagen = new int[480][480];
+	private static int[][] imagen;
+	private static int rows;
+	private static int columns;
 
 	public static final Properties props = new Properties();
 
@@ -148,9 +149,20 @@ public class Weather {
 						// bloque pruebas
 						sb.append("\n\t Interpretados:" + index + " Bits = " + ((index / 8) + (index % 8 == 0 ? 0 : 1)) + " BYTES ### Data[" + data.length + "]:\t").append(Weather.getHex(data));
 					} else if (Weather.BUFR_SECTION == SectionType.END_SECTION.getId()) {
-						// Nada
 						BMP bmp = new BMP();
 						bmp.saveBMP("Salida/imagenPrueba.bmp", Weather.imagen);
+
+						/*TODO Android:
+							try {
+								Toast.makeText(this, "Saved file: " + tempFilePath, Toast.LENGTH_LONG).show();
+								FileOutputStream out = new FileOutputStream(tempFilePath);
+								imBitmap.compress(Bitmap.CompressFormat.PNG, 90, out);
+								out.flush();
+								out.close();
+							} catch (Exception e) {
+								processException(e);
+							}
+						 */
 					}
 				} else {
 					// Nada sb.append(Weather.getHex(data));
@@ -172,10 +184,8 @@ public class Weather {
 
 	}
 
-	static int column = 0;
-	static Integer row = null;
-	static int dataRepetition = 0;
-	static Integer dataToRepeat = 0;
+	static int pixelIndex = 0;
+	static int dataRepetition = 1;
 
 	private static int processLabels(int index, final byte[] data, final Label[] arrayLabels, final int repeats, final int level) {
 		String levelSt = "";
@@ -185,74 +195,57 @@ public class Weather {
 		for (int n = 0; n < repeats; n++) {
 			Weather.LOG.debug(levelSt + "## Nº" + (n + 1));
 
-			if (Weather.imagenFlag) {
-				Weather.LOG.debug("## Nº" + (n + 1));
-			}
 			for (int arrayIndex = 0; arrayIndex < arrayLabels.length; arrayIndex++) {
 				Label label = arrayLabels[arrayIndex];
 				Weather.LOG.debug(levelSt + label + " SIZE:" + label.size + " SCALE:" + label.scale);
 
+				if (label.labelPropKey.equals("0.30.21")) {
+					Weather.rows = Weather.bitSetToInt(data, index, label.size, label.scale);
+					Weather.LOG.debug("# FILAS: " + Weather.rows);
+				}
+				if (label.labelPropKey.equals("0.30.22")) {
+					Weather.columns = Weather.bitSetToInt(data, index, label.size, label.scale);
+					Weather.LOG.debug("# COLUMNAS: " + Weather.columns);
+				}
 				if (label.labelPropKey.equals("3.21.193")) {
 					Weather.LOG.debug("EMPEZAMOS CON IMAGEN");
+					//TODO android: Bitmap.createBitmap(Weather.columns, Weather.rows, Bitmap.Config.ARGB_8888)
+					Weather.imagen = new int[Weather.rows][Weather.columns];
 					Weather.imagenFlag = true;
+
 				}
 
 				if (label.type == LabelType.DESCRIPTOR) {
-					// escala asociada a etiquetas: 9087 con escala 2 representa
-					// a valor 90.87
+					// escala asociada a etiquetas: 9087 con escala 2 representa el valor 90.87
 					Weather.LOG.debug(levelSt
 							+ "\t"
-							+ (Math.abs(label.scale) == 1 ? (label.size < 33 ? "--> INT:" + Weather.bitSetToInt(data, index, label.size, label.scale) : "--> LONG:"
+							+ (Math.abs(label.scale) == 0 ? (label.size < 33 ? "--> INT:" + Weather.bitSetToInt(data, index, label.size, label.scale) : "--> LONG:"
 									+ Weather.bitSetToLong(data, index, label.size, label.scale)) : ("--> DOUBLE:" + Weather.bitSetToDouble(data, index, label.size, label.scale)))
 									+ (Weather.isUnknownValue(data, index, label.size) ? "\t# NO DATA #" : "")
 									// + "\tBitSet: " + Weather.printBitSet(data, index,
 									// label.size)
 							);
 					if (Weather.imagenFlag) {
-						Weather.LOG.debug("data:+"
-								+ label.labelPropKey
-								+ " value:"
-								+ (Math.abs(label.scale) == 1 ? (label.size < 33 ? "--> INT:" + Weather.bitSetToInt(data, index, label.size, label.scale) : "--> LONG:"
-										+ Weather.bitSetToLong(data, index, label.size, label.scale)) : ("--> DOUBLE:" + Weather.bitSetToDouble(data, index, label.size, label.scale)))
-										+ (Weather.isUnknownValue(data, index, label.size) ? "\t# NO DATA #" : ""));
-					}
-
-					if (label.labelPropKey.equals("0.5.31")) {
-						// estamos empezando una fila
-						Weather.column = 0;
-						if (Weather.row == null) {
-							Weather.row = 0;
-						} else {
-							Weather.row++;
+						if (label.labelPropKey.equals("0.31.12")) {
+							Weather.dataRepetition = Weather.bitSetToInt(data, index, label.size, label.scale);
 						}
-						Weather.LOG.debug("Iniciando fila [" + Weather.row + "]");
-					} else if (label.labelPropKey.equals("0.31.12")) {
-						Weather.dataRepetition = (int) Weather.bitSetToDouble(data, index, label.size, label.scale);
-						Weather.dataToRepeat = null;
-						Weather.LOG.debug("longitud [" + Weather.dataRepetition + "]");
-					} else if (label.labelPropKey.equals("0.30.2")) {
-						if (Weather.dataToRepeat != null) {
-							Weather.LOG.debug("dato solo en columna [" + Weather.column + "] valor [" + Weather.bitSetToDouble(data, index, label.size, label.scale) + "]");
-							Weather.imagen[Weather.row][Weather.column] = (int) Weather.bitSetToDouble(data, index, label.size, label.scale);
-							Weather.column++;
-						} else {
-							Weather.LOG.debug("dato en columna [" + Weather.column + "] y tamaño [" + Weather.dataRepetition + "] valor [" + Weather.bitSetToDouble(data, index, label.size, label.scale) + "]");
+						if (label.labelPropKey.equals("0.30.2")) {
+							for(int i = 0; i< Weather.dataRepetition; i++){
+								int pixelData = Weather.bitSetToInt(data, index, label.size, label.scale);
 
-							if (Weather.column + Weather.dataRepetition > 480) {
-								Weather.LOG.debug("ERROR, COLUMNA DE [" + (Weather.column + Weather.dataRepetition) + "], cambiamos a dataRepetition = 1!");
-								Weather.dataRepetition = 1;
+								if(Weather.isUnknownValue(data, index, label.size)) {
+									//TODO pixelData = valor translucido/sombreado
+								}
+
+								int row = Weather.pixelIndex/Weather.columns;
+								int col = Weather.pixelIndex % Weather.columns;
+								Weather.imagen[row][col] = pixelData;
+								Weather.pixelIndex++;
 							}
-							for (int col = Weather.column; col < (Weather.column + Weather.dataRepetition) && col < 480; col++) {
-								Weather.imagen[Weather.row][col] = (int) Weather.bitSetToDouble(data, index, label.size, label.scale);
-							}
-							if (Weather.column + Weather.dataRepetition > 480) {
-								Weather.LOG.debug("ERROR, COLUMNA DE [" + (Weather.column + Weather.dataRepetition) + "]");
-								Weather.column = 480;
-							} else {
-								Weather.column = Weather.column + Weather.dataRepetition;
-							}
+							Weather.dataRepetition = 1;
 						}
 					}
+
 
 				}
 
