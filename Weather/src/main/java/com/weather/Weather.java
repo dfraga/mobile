@@ -1,5 +1,7 @@
 package com.weather;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -24,29 +26,18 @@ public class Weather {
 
 	public static final Properties props = new Properties();
 
-	public static void main(final String[] args) {
+	public static void process(final File inputFile) {
 
-		// Weather.log.debug("" + Weather.bitSetToInt(new byte[]{(byte) 0x07,
-		// (byte) 0xDC},0,16,0));
-		// Weather.log.debug("" + Weather.int3(new byte[]{(byte) 0x00, (byte)
-		// 0x07, (byte) 0xDC}));
-		// Weather.log.debug(Weather.printBitSet(new byte[]{(byte) 0x07, (byte)
-		// 0xDC},0,16));
-		// System.exit(0);
 
+		final long initTime = System.currentTimeMillis();
 		try {
 			// Cargamos properties
-
 			final InputStream porpertiesIs = Weather.class.getClassLoader().getResourceAsStream("sizes2.properties");
 			Weather.props.load(porpertiesIs);
 
-			final String fileName =
-					//"COR110915203801.BPPI001"
-					//"COR120420161801.BPPI001"
-					"COR120501155801.BPPI001";
 			// Cargamos fichero de datos
-			final InputStream is = Weather.class.getClassLoader()
-					.getResourceAsStream(fileName);
+			final String fileName = inputFile.getName();
+			final InputStream is = new FileInputStream(inputFile);
 
 			boolean section = false;
 
@@ -172,14 +163,15 @@ public class Weather {
 				}
 
 				if (sb.length() > 0) {
-
 					Weather.LOG.debug("@@[" + SectionType.values()[Weather.BUFR_SECTION] + "]" + sb + "\n\n");
 				}
 
 				data = new byte[step];
 
 			}
-			Weather.LOG.debug("Fin de proceso");
+			final String finalMsg = "Fin de proceso en: " + (System.currentTimeMillis() - initTime) + " ms";
+			Weather.LOG.debug(finalMsg);
+			//System.out.println(finalMsg);
 
 		} catch (final Exception e) {
 			e.printStackTrace();
@@ -187,8 +179,8 @@ public class Weather {
 
 	}
 
-	static int pixelIndex = 0;
-	static int dataRepetition = 1;
+	private static int pixelIndex = 0;
+	private static int dataRepetition = 1;
 
 	private static int processLabels(int index, final byte[] data, final Label[] arrayLabels, final int repeats, final int level) {
 		String levelSt = "";
@@ -204,18 +196,18 @@ public class Weather {
 
 				if (label.labelPropKey.equals("0.30.21")) {
 					Weather.rows = Weather.bitSetToInt(data, index, label.size, label.scale);
-					Weather.LOG.debug("# FILAS: " + Weather.rows);
 				}
 				if (label.labelPropKey.equals("0.30.22")) {
 					Weather.columns = Weather.bitSetToInt(data, index, label.size, label.scale);
-					Weather.LOG.debug("# COLUMNAS: " + Weather.columns);
 				}
 				if (label.labelPropKey.equals("3.21.193")) {
-					Weather.LOG.debug("EMPEZAMOS CON IMAGEN");
 					//TODO android: Bitmap.createBitmap(Weather.columns, Weather.rows, Bitmap.Config.ARGB_8888)
 					Weather.imagen = new int[Weather.rows][Weather.columns];
 					Weather.imagenFlag = true;
 
+				}
+				if (label.labelPropKey.equals("3.1.192")) {
+					/* TODO clase para datos de fecha /latitud / longitud.... */
 				}
 
 				if (label.type == LabelType.DESCRIPTOR) {
@@ -240,7 +232,7 @@ public class Weather {
 									//TODO pixelData = valor translucido/sombreado
 								}
 
-								int row = Weather.pixelIndex/Weather.columns;
+								int row = Weather.pixelIndex / Weather.columns;
 								int col = Weather.pixelIndex % Weather.columns;
 								Weather.imagen[row][col] = pixelData;
 								Weather.pixelIndex++;
