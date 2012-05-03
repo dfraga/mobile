@@ -234,7 +234,8 @@ public class Weather {
 
 								int row = Weather.pixelIndex / Weather.columns;
 								int col = Weather.pixelIndex % Weather.columns;
-								Weather.imagen[row][col] = pixelData;
+								//La imagen se describe de abajo-izquierda a arriba-derecha
+								Weather.imagen[Weather.rows -1 - row][col] = pixelData;
 								Weather.pixelIndex++;
 							}
 							Weather.dataRepetition = 1;
