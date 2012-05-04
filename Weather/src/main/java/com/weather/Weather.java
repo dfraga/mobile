@@ -2,13 +2,19 @@ package com.weather;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
 import org.apache.log4j.Logger;
+
+import com.weather.populate.Class3X01Y192;
+import com.weather.populate.LabelData;
+import com.weather.populate.Populator;
 
 public class Weather {
 
@@ -19,6 +25,7 @@ public class Weather {
 	private static int BUFR_SECTION = 0;
 
 	private static boolean imagenFlag = false;
+	private static boolean generalDataFlag = false;
 
 	private static int[][] imagen;
 	private static int rows;
@@ -146,6 +153,9 @@ public class Weather {
 						BMP bmp = new BMP();
 						bmp.saveBMP("Salida/" + fileName + ".bmp", Weather.imagen);
 
+						/* TODO almacenar o aprovechar decentemente los datos de Weather.imageGeneralData */
+						(new OutputStreamWriter(new FileOutputStream(new File("Salida", fileName + ".txt")))).append(fileName).append("\n").append(Weather.imageGeneralData.toString()).close();
+
 						/*TODO Android:
 							try {
 								Toast.makeText(this, "Saved file: " + tempFilePath, Toast.LENGTH_LONG).show();
@@ -181,6 +191,7 @@ public class Weather {
 
 	private static int pixelIndex = 0;
 	private static int dataRepetition = 1;
+	private static Populator<Class3X01Y192> imageGeneralData;
 
 	private static int processLabels(int index, final byte[] data, final Label[] arrayLabels, final int repeats, final int level) {
 		String levelSt = "";
@@ -195,10 +206,10 @@ public class Weather {
 				Weather.LOG.debug(levelSt + label + " SIZE:" + label.size + " SCALE:" + label.scale);
 
 				if (label.labelPropKey.equals("0.30.21")) {
-					Weather.rows = Weather.bitSetToInt(data, index, label.size, label.scale);
+					Weather.rows = Weather.bitSetToInt(data, index, label.size, label.scale, label.referenceValue);
 				}
 				if (label.labelPropKey.equals("0.30.22")) {
-					Weather.columns = Weather.bitSetToInt(data, index, label.size, label.scale);
+					Weather.columns = Weather.bitSetToInt(data, index, label.size, label.scale, label.referenceValue);
 				}
 				if (label.labelPropKey.equals("3.21.193")) {
 					//TODO android: Bitmap.createBitmap(Weather.columns, Weather.rows, Bitmap.Config.ARGB_8888)
@@ -207,26 +218,35 @@ public class Weather {
 
 				}
 				if (label.labelPropKey.equals("3.1.192")) {
-					/* TODO clase para datos de fecha /latitud / longitud.... */
+					/* clase para datos de fecha /latitud / longitud.... */
+					Weather.imageGeneralData = new Populator<Class3X01Y192>();
+					Weather.generalDataFlag = true;
 				}
 
 				if (label.type == LabelType.DESCRIPTOR) {
 					// escala asociada a etiquetas: 9087 con escala 2 representa el valor 90.87
+					Number numberData = label.scale == 0 ? (label.size < 33 ? Weather.bitSetToInt(data, index, label.size, label.scale, label.referenceValue) : Weather.bitSetToLong(data, index, label.size, label.scale, label.referenceValue)) : (Weather.bitSetToDouble(data, index, label.size, label.scale, label.referenceValue));
 					Weather.LOG.debug(levelSt
-							+ "\t"
-							+ (Math.abs(label.scale) == 0 ? (label.size < 33 ? "--> INT:" + Weather.bitSetToInt(data, index, label.size, label.scale) : "--> LONG:"
-									+ Weather.bitSetToLong(data, index, label.size, label.scale)) : ("--> DOUBLE:" + Weather.bitSetToDouble(data, index, label.size, label.scale)))
-									+ (Weather.isUnknownValue(data, index, label.size) ? "\t# NO DATA #" : "")
-									// + "\tBitSet: " + Weather.printBitSet(data, index,
-									// label.size)
-							);
+							+ "\t" + numberData + (Weather.isUnknownValue(data, index, label.size) ? "\t# NO DATA #" : ""));
+
+					if (Weather.generalDataFlag) {
+						final Class3X01Y192 lastOffer = Weather.imageGeneralData.getLastOffer();
+						final Class3X01Y192 current = Class3X01Y192.getById(lastOffer==null ? 0 :lastOffer.getId()+1);
+						if (current == Class3X01Y192.NO_MORE_DATA) {
+							Weather.generalDataFlag = false;
+						} else {
+							LabelData labelData = new LabelData(label, numberData);
+							Weather.imageGeneralData.offer(current, labelData);
+						}
+
+					}
 					if (Weather.imagenFlag) {
 						if (label.labelPropKey.equals("0.31.12")) {
-							Weather.dataRepetition = Weather.bitSetToInt(data, index, label.size, label.scale);
+							Weather.dataRepetition = Weather.bitSetToInt(data, index, label.size, label.scale, label.referenceValue);
 						}
 						if (label.labelPropKey.equals("0.30.2")) {
 							for(int i = 0; i< Weather.dataRepetition; i++){
-								int pixelData = Weather.bitSetToInt(data, index, label.size, label.scale);
+								int pixelData = Weather.bitSetToInt(data, index, label.size, label.scale, label.referenceValue);
 
 								if(Weather.isUnknownValue(data, index, label.size)) {
 									//TODO pixelData = valor translucido/sombreado
@@ -266,7 +286,7 @@ public class Weather {
 						labelSequence[repIndex] = arrayLabels[i];
 						repIndex++;
 					}
-					Integer count = Weather.bitSetToInt(data, index, countLabel.size, countLabel.scale);
+					Integer count = Weather.bitSetToInt(data, index, countLabel.size, countLabel.scale, countLabel.referenceValue);
 					index += countLabel.size;
 					arrayIndex += label.x - 1;
 					sbm.append("\t#Iteraciones: " + count);
@@ -327,14 +347,6 @@ public class Weather {
 		return (bitSet[i / 8] & (1 << (8 - (i % 8) - 1))) != 0;
 	}
 
-	public static int bitSetToInt(final byte[] bitSet, final int beginBit, final int offSet, final int scale) {
-		int bitInteger = 0;
-		for (int i = 0; i < offSet; i++) {
-			bitInteger += Weather.getBit(bitSet, beginBit + i) ? (1 << (offSet - (i + 1))) : 0;
-		}
-		return bitInteger / (scale == 0 ? 1 : (scale * 10));
-	}
-
 	public static boolean isUnknownValue(final byte[] bitSet, final int beginBit, final int offSet) {
 		for (int i = 0; i < offSet; i++) {
 			if (!Weather.getBit(bitSet, beginBit + i)) {
@@ -344,20 +356,31 @@ public class Weather {
 		return true;
 	}
 
-	public static long bitSetToLong(final byte[] bitSet, final int beginBit, final int offSet, final int scale) {
+	public static int bitSetToInt(final byte[] bitSet, final int beginBit, final int offSet, final int scale, final int referenceValue) {
+		int bitInteger = 0;
+		for (int i = 0; i < offSet; i++) {
+			bitInteger += Weather.getBit(bitSet, beginBit + i) ? (1 << (offSet - (i + 1))) : 0;
+		}
+		bitInteger += referenceValue;
+		return bitInteger / (int)Math.pow(10, scale);//(scale == 0 ? 1 : (scale * 10));
+	}
+
+	public static long bitSetToLong(final byte[] bitSet, final int beginBit, final int offSet, final int scale, final int referenceValue) {
 		long bitLong = 0;
 		for (int i = 0; i < offSet; i++) {
 			bitLong += Weather.getBit(bitSet, beginBit + i) ? (1L << (offSet - (i + 1))) : 0L;
 		}
-		return bitLong / (scale == 0 ? 1l : (scale * 10));
+		bitLong += referenceValue;
+		return bitLong / (long)Math.pow(10, scale);//(scale == 0 ? 1l : (scale * 10));
 	}
 
-	public static double bitSetToDouble(final byte[] bitSet, final int beginBit, final int offSet, final int scale) {
+	public static double bitSetToDouble(final byte[] bitSet, final int beginBit, final int offSet, final int scale, final int referenceValue) {
 		double bitLong = 0;
 		for (int i = 0; i < offSet; i++) {
 			bitLong += Weather.getBit(bitSet, beginBit + i) ? (1L << (offSet - (i + 1))) : 0L;
 		}
-		return bitLong / (scale == 0 ? 1 : (scale * 10));
+		bitLong += referenceValue;
+		return bitLong / Math.pow(10, scale);//(scale == 0 ? 1 : (scale * 10));
 	}
 
 	@SuppressWarnings("unused")

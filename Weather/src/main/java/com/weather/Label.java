@@ -13,6 +13,7 @@ public class Label {
 	final String labelPropKey;
 	final int size;
 	final int scale;
+	final int referenceValue;
 
 	Label(final byte[] label) {
 		this( LabelType.getLabelType(label[0]).getId(),
@@ -44,14 +45,17 @@ public class Label {
 				//Separado por ; tamaño;escala
 				size = Integer.parseInt(labelProps.split(";")[0]);
 				scale = labelProps.contains(";") ? Integer.valueOf(labelProps.split(";")[1]): 0;
+				referenceValue = labelProps.contains(";") ? Integer.valueOf(labelProps.split(";")[2]): 0;
 			} else {
 				Label.LOG.debug("@@@ NO EXISTE PROPERTY " + labelPropKey);
 				size = 0;
 				scale = 0;
+				referenceValue = 0;
 			}
 		} else {
 			size = 0;
 			scale = 0;
+			referenceValue = 0;
 		}
 	}
 
