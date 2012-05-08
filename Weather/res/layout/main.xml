@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="fill_parent" android:layout_height="fill_parent"
+    android:weightSum="1">
+
+	<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	    android:orientation="horizontal"
+	    android:layout_width="wrap_content"
+	    android:layout_height="60px"
+	    >
+
+        <Button android:id="@+id/execute"
+            android:text="Ejecutar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="top" />
+
+	</LinearLayout>
+
+    <!--ProgressBar 
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:id="@+id/progressBar"
+        android:max="100"
+        android:paddingTop="10px"
+        android:paddingBottom="10px"
+    /-->
+
+
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:orientation="vertical"
+        android:layout_width="wrap_content"
+        android:layout_height="300px"
+        >
+	    <ImageView android:id="@+id/imageView"
+	        android:layout_width="wrap_content"
+	        android:layout_height="wrap_content"
+	        />
+    </LinearLayout>
+
+</LinearLayout>

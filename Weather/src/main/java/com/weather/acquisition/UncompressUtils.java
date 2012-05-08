@@ -16,11 +16,10 @@ import org.apache.commons.compress.archivers.ArchiveStreamFactory;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.utils.IOUtils;
-import org.apache.log4j.Logger;
+
+import android.util.Log;
 
 public class UncompressUtils {
-
-	private static final Logger LOG = Logger.getLogger(UncompressUtils.class);
 
 	public static boolean uncompressGzFile(final File localfile, final File targetlocalfile) {
 		GZIPInputStream in = null;
@@ -36,7 +35,7 @@ public class UncompressUtils {
 			}
 			return true;
 		} catch (IOException ex) {
-			UncompressUtils.LOG.error("There was a problem while uncompressing file", ex);
+			Log.e(UncompressUtils.class.getSimpleName(),"There was a problem while uncompressing file", ex);
 			return false;
 		} finally {
 			// Close the file and stream
@@ -64,15 +63,15 @@ public class UncompressUtils {
 		while (entry != null) {
 			final File outputFile = new File(outputDir, entry.getName());
 			if (entry.isDirectory()) {
-				UncompressUtils.LOG.info(String.format("Attempting to write output directory %s.", outputFile.getAbsolutePath()));
+				Log.d(UncompressUtils.class.getSimpleName(),String.format("Attempting to write output directory %s.", outputFile.getAbsolutePath()));
 				if (!outputFile.exists()) {
-					UncompressUtils.LOG.info(String.format("Attempting to create output directory %s.", outputFile.getAbsolutePath()));
+					Log.d(UncompressUtils.class.getSimpleName(),String.format("Attempting to create output directory %s.", outputFile.getAbsolutePath()));
 					if (!outputFile.mkdirs()) {
 						throw new IllegalStateException(String.format("Couldn't create directory %s.", outputFile.getAbsolutePath()));
 					}
 				}
 			} else if(entry.isFile()) {
-				UncompressUtils.LOG.info(String.format("Creating output file %s.", outputFile.getAbsolutePath()));
+				Log.d(UncompressUtils.class.getSimpleName(),String.format("Creating output file %s.", outputFile.getAbsolutePath()));
 				final OutputStream outputFileStream = new FileOutputStream(outputFile);
 				IOUtils.copy(debInputStream, outputFileStream);
 				outputFileStream.close();

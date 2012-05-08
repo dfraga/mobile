@@ -16,20 +16,24 @@ import org.apache.commons.compress.archivers.ArchiveException;
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPFile;
-import org.apache.log4j.Logger;
 
+import android.util.Log;
+import android.widget.Toast;
+
+import com.android.weather.WeatherProcessListener;
 import com.weather.Weather;
 
 public class PPIDownloader {
 
-	private static final Logger LOG = Logger.getLogger(PPIDownloader.class);
 	private static final String server = "ftpdatos.aemet.es";
 	private static final String folder = "radar";
+	private final WeatherProcessListener listener;
 
 	private FTPClient ftpclient = null;
 	private File localFolder = null;
 
-	public PPIDownloader(final File localFolder) {
+	public PPIDownloader(final File localFolder, final WeatherProcessListener listener) {
+		this.listener = listener;
 		this.localFolder = localFolder;
 	}
 
@@ -42,16 +46,16 @@ public class PPIDownloader {
 	/**
 	 * Get data from observacions AEMET.
 	 */
-	public void get(final String radarFilter) {
+	public void get(final String radarFilter, final WeatherProcessListener listener) {
 		final String startStr = "Start: {" + getCurrentUTCFormattedDate() + "}";
 		System.out.println(startStr);
-		//		PPIDownloader.LOG.debug(startStr);
+		//		Log.d(PPIDownloader.class.getSimpleName(),startStr);
 
 		handleFiles(radarFilter);
 
 		final String endStr = "End: {" + getCurrentUTCFormattedDate() + "}";
 		System.out.println(endStr);
-		//		PPIDownloader.LOG.debug(endStr);
+		//		Log.d(PPIDownloader.class.getSimpleName(),endStr);
 	}
 
 	private void handleFiles(final String radarFilter) {
@@ -62,15 +66,18 @@ public class PPIDownloader {
 			// Connect to server
 			ftpclient.connect(PPIDownloader.server);
 			ftpclient.setFileTransferMode(FTP.BINARY_FILE_TYPE);
+			ftpclient.enterLocalPassiveMode();
 
 			// Loggin
 			if (!ftpclient.login("anonymous", null)) {
-				PPIDownloader.LOG.error("Can't log into FTP");
+				Toast.makeText(listener.getContext(), "Can't log into FTP", Toast.LENGTH_LONG).show();
+				Log.e(PPIDownloader.class.getSimpleName(),"Can't log into FTP");
 				return;
 			}
 			// Change directory
 			if (!ftpclient.changeWorkingDirectory(PPIDownloader.folder)) {
-				PPIDownloader.LOG.error("Can't change to folder '" + PPIDownloader.folder + "'.");
+				Toast.makeText(listener.getContext(), "Can't change to folder '" + PPIDownloader.folder + "'.", Toast.LENGTH_LONG).show();
+				Log.e(PPIDownloader.class.getSimpleName(),"Can't change to folder '" + PPIDownloader.folder + "'.");
 				return;
 			}
 
@@ -88,7 +95,8 @@ public class PPIDownloader {
 			folderDay.deleteOnExit();
 			if (!folderDay.exists()) {
 				if (!folderDay.mkdir()) {
-					PPIDownloader.LOG.error("Can''t create the daily folder '" + folderDay.getAbsolutePath() + "'");
+					Toast.makeText(listener.getContext(), "Can't create the daily folder '" + folderDay.getAbsolutePath() + "'", Toast.LENGTH_LONG).show();
+					Log.e(PPIDownloader.class.getSimpleName(),"Can't create the daily folder '" + folderDay.getAbsolutePath() + "'");
 					return;
 				}
 				folderDay.deleteOnExit();
@@ -96,7 +104,8 @@ public class PPIDownloader {
 
 			// Change to day directory
 			if (!ftpclient.changeWorkingDirectory(dayFolderName)) {
-				PPIDownloader.LOG.error("Can't change to day folder '" + dayFolderName + "'.");
+				Toast.makeText(listener.getContext(), "Can't cchange to day folder '" + dayFolderName + "'", Toast.LENGTH_LONG).show();
+				Log.e(PPIDownloader.class.getSimpleName(),"Can't change to day folder '" + dayFolderName + "'.");
 				return;
 			}
 
@@ -110,13 +119,13 @@ public class PPIDownloader {
 
 				//TODO cambiar comprobacion, pues estos ficheros se borran tras la descarga
 				if (!localFile.exists()) {
-					PPIDownloader.LOG.debug("File '" + ftpFile.getName() + "' doesn't exist locally");
+					Log.d(PPIDownloader.class.getSimpleName(),"File '" + ftpFile.getName() + "' doesn't exist locally");
 					mustBeRead = true;
 				} else if (Math.abs(localFile.length() - size) > 1) {
-					PPIDownloader.LOG.debug("File '" + ftpFile.getName() + "' size changed (before: " + localFile.length() + ", after: " + size + ")");
+					Log.d(PPIDownloader.class.getSimpleName(),"File '" + ftpFile.getName() + "' size changed (before: " + localFile.length() + ", after: " + size + ")");
 					mustBeRead = true;
 				} else {
-					PPIDownloader.LOG.debug("Ignored file '" + ftpFile.getName() + "'");
+					Log.d(PPIDownloader.class.getSimpleName(),"Ignored file '" + ftpFile.getName() + "'");
 				}
 			}
 			// If we need to read the file then control if any error occurs.
@@ -124,9 +133,9 @@ public class PPIDownloader {
 				downloadFile(ftpFile, localFile);
 			}
 		} catch (SocketException ex) {
-			PPIDownloader.LOG.error("",ex);
+			Log.e(PPIDownloader.class.getSimpleName(),"",ex);
 		} catch (Exception ex) {
-			PPIDownloader.LOG.error("",ex);
+			Log.e(PPIDownloader.class.getSimpleName(),"",ex);
 		} finally {
 			if (ftpclient != null) {
 				try {
@@ -161,16 +170,16 @@ public class PPIDownloader {
 	 */
 	private void downloadFile(final FTPFile ftpfile, final File localFile) throws Exception {
 		try {
-			PPIDownloader.LOG.debug("Downloading file '" + ftpfile.getName() + "' at '" + getCurrentUTCFormattedDate() + "'");
+			Log.d(PPIDownloader.class.getSimpleName(),"Downloading file '" + ftpfile.getName() + "' at '" + getCurrentUTCFormattedDate() + "'");
 
 			ftpclient.setFileType(FTP.BINARY_FILE_TYPE);
 			InputStream is = ftpclient.retrieveFileStream(ftpfile.getName());
 
-			PPIDownloader.LOG.debug("Downloaded finished at '" + getCurrentUTCFormattedDate() + "' , size:'" + ftpfile.getSize() + "'bytes , timestamp: '" + ftpfile.getTimestamp().getTime() + "'.");
+			Log.d(PPIDownloader.class.getSimpleName(),"Downloaded finished at '" + getCurrentUTCFormattedDate() + "' , size:'" + ftpfile.getSize() + "'bytes , timestamp: '" + ftpfile.getTimestamp().getTime() + "'.");
 
 			inflate(is, localFile);
 		} catch (Exception ex) {
-			PPIDownloader.LOG.debug("A problem occurs while downloading file '" + ftpfile.getName() ,ex);
+			Log.d(PPIDownloader.class.getSimpleName(),"A problem occurs while downloading file '" + ftpfile.getName() ,ex);
 			throw ex;
 		}
 	}
@@ -182,7 +191,7 @@ public class PPIDownloader {
 		List<File> tarFiles = UncompressUtils.uncompressTarFile(is, folderDay);
 		if (tarFiles.size() > 0) {
 			for(File untarFile:tarFiles) {
-				PPIDownloader.LOG.debug("Untar file: " + untarFile.getName());
+				Log.d(PPIDownloader.class.getSimpleName(),"Untar file: " + untarFile.getName());
 				// si .tar seguir descomprimindo, si bppi.gz obtener ficheiro
 
 				if(untarFile.getName().toLowerCase().contains(".bppi")
@@ -190,9 +199,9 @@ public class PPIDownloader {
 					String targetName = untarFile.getName().replaceAll("(?i).gz", "");
 					File unzipFile = new File(folderDay, targetName);
 					if (UncompressUtils.uncompressGzFile(untarFile, unzipFile)) {
-						PPIDownloader.LOG.debug("Unzip file: " + targetName);
+						Log.d(PPIDownloader.class.getSimpleName(),"Unzip file: " + targetName);
 						// procesar imagen radar.
-						Weather.process(unzipFile);
+						Weather.process(unzipFile, listener);
 					} else {
 						// If there is any error uncompressing file then remove files to
 						// ensure it will be downloaded again.
