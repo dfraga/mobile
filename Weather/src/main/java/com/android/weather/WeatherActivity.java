@@ -25,15 +25,19 @@ public class WeatherActivity extends Activity implements WeatherProcessListener 
 
 	private final AtomicBoolean processing = new AtomicBoolean(false);
 	private static int progress = 0;
+	private static String message = "";
 	private Bitmap imBitmap;
 	private ImageView imageView;
 
-	private final Runnable processErrorAction = new ExceptionActionRunnable() {};
+	private final Runnable processErrorAction = new ExceptionActionRunnable() {
+		@Override
+		public void run() {
+			resetLayout();
+		}
+	};
+
 	final Handler progressThreadHandler = new Handler();
 	private long lastProgressUpdate = -1;
-
-	private int maxTotal = 100;
-	private int partial = 0;
 
 	/** Called when the activity is first created. */
 	@Override
@@ -59,7 +63,7 @@ public class WeatherActivity extends Activity implements WeatherProcessListener 
 			WeatherActivity.progressDialog = new ProgressDialog(WeatherActivity.this.applyButton.getContext());
 			WeatherActivity.progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
 			WeatherActivity.progressDialog.setCancelable(false);
-			WeatherActivity.progressDialog.setMessage("Procesando....");
+			WeatherActivity.progressDialog.setMessage("Comprobando datos.");
 
 			processing.set(false);
 			WeatherActivity.progress = 0;
@@ -77,7 +81,6 @@ public class WeatherActivity extends Activity implements WeatherProcessListener 
 		public void run() {
 			//Toast.makeText(PhotoColorSwitcherActivity.this, "processBeginAction", Toast.LENGTH_SHORT).show();
 
-			maxTotal = 480*480;//XXX = imBitmap.getWidth() * imBitmap.getHeight();
 			applyButton.setEnabled(false);
 			applyButton.setVisibility(View.INVISIBLE);
 			WeatherActivity.progress = 0;
@@ -92,6 +95,7 @@ public class WeatherActivity extends Activity implements WeatherProcessListener 
 
 		@Override
 		public synchronized void run() {
+			WeatherActivity.progressDialog.setMessage(WeatherActivity.message);
 			WeatherActivity.progressDialog.setProgress(WeatherActivity.progress);
 		}
 
@@ -105,16 +109,20 @@ public class WeatherActivity extends Activity implements WeatherProcessListener 
 			imageView.setImageBitmap(imBitmap);
 			Toast.makeText(WeatherActivity.this, "Photo processing finished.", Toast.LENGTH_LONG).show();
 
-			processing.set(false);
-			lastProgressUpdate = -1;
-
-			applyButton.setVisibility(View.VISIBLE);
-			applyButton.setEnabled(true);
-
-			WeatherActivity.progressDialog.hide();
+			resetLayout();
 		}
 
 	};
+
+	private void resetLayout() {
+		processing.set(false);
+		lastProgressUpdate = -1;
+
+		applyButton.setVisibility(View.VISIBLE);
+		applyButton.setEnabled(true);
+
+		WeatherActivity.progressDialog.hide();
+	}
 
 	private class ExceptionActionRunnable implements Runnable {
 		private Exception e;
@@ -139,11 +147,9 @@ public class WeatherActivity extends Activity implements WeatherProcessListener 
 				processT.start();
 
 			} catch(final Exception e){
-				((ExceptionActionRunnable) processErrorAction).setException(e);
-				progressThreadHandler.post(processErrorAction);
 				processException(e);
 			} finally {
-				progressThreadHandler.post(processEndAction);
+				//progressThreadHandler.post(processEndAction);
 			}
 		}
 	}
@@ -160,13 +166,28 @@ public class WeatherActivity extends Activity implements WeatherProcessListener 
 		final String error = WeatherActivity.getStackTrace(("Error: " + e + " - " + e.getMessage()),e);
 		Log.e("error",error);
 		Toast.makeText(WeatherActivity.this, error, Toast.LENGTH_SHORT).show();
+
+		((ExceptionActionRunnable) processErrorAction).setException((Exception) e);
+		progressThreadHandler.post(processErrorAction);
+	}
+
+
+
+	@Override
+	public void setPercentageMessage(final String message) {
+		WeatherActivity.message = message;
+		lastProgressUpdate = -1;
+		progressThreadHandler.post(WeatherActivity.progressThread);
 	}
 
 	@Override
-	public void setPercentageProgression(final int x, final int y, final int yMax) {
+	public void setPercentageProgression(final int partial, final int maxTotal) {
 		if(maxTotal > 0) {
-			partial = ((x*yMax) + y) * 100;
-			WeatherActivity.progress = partial / maxTotal;
+			try {
+				WeatherActivity.progress = (int) (((double)partial / (double)maxTotal) * 99);
+			} catch (Exception e) {
+				Log.e("set progress", "error asignando valor", e);
+			}
 
 			if( WeatherActivity.progress - lastProgressUpdate > 0) {
 				lastProgressUpdate = WeatherActivity.progress;
@@ -179,15 +200,13 @@ public class WeatherActivity extends Activity implements WeatherProcessListener 
 	@Override
 	public void openImage(final Bitmap tempBitmap) {
 
-		if (!applyButton.isEnabled()) {
-			applyButton.setEnabled(true);
-			applyButton.setVisibility(View.VISIBLE);
-
-		}
 		imBitmap = tempBitmap;
 		imBitmap.prepareToDraw();
-		imageView.setImageBitmap(imBitmap);
-		imageView.requestLayout();
+
+		//TODO en thread original de contexto
+		//		imageView.setImageBitmap(imBitmap);
+		//		imageView.requestLayout();
+		progressThreadHandler.post(processEndAction);
 
 	}
 

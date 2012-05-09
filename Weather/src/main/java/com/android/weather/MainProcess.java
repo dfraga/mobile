@@ -2,6 +2,7 @@ package com.android.weather;
 
 import java.io.File;
 
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -31,7 +32,8 @@ public class MainProcess extends Thread {
 			handler.sendEmptyMessage(1);
 
 			Toast.makeText(listener.getContext(), "RUNNING", Toast.LENGTH_LONG).show();
-			File localFolder = new File("Salida");
+			File ruta_sd = Environment.getExternalStorageDirectory();
+			File localFolder = new File(ruta_sd.getAbsolutePath(), "Salida");
 			localFolder.mkdir();
 
 			File localFolderObservations = new File(localFolder, "weatherTempDownloads");

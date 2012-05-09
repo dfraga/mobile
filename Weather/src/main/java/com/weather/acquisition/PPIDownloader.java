@@ -61,8 +61,10 @@ public class PPIDownloader {
 	private void handleFiles(final String radarFilter) {
 
 		try {
+			listener.setPercentageMessage("Recopilando datos...");
 			ftpclient = new FTPClient();
 
+			listener.setPercentageProgression(1, 5);
 			// Connect to server
 			ftpclient.connect(PPIDownloader.server);
 			ftpclient.setFileTransferMode(FTP.BINARY_FILE_TYPE);
@@ -74,6 +76,8 @@ public class PPIDownloader {
 				Log.e(PPIDownloader.class.getSimpleName(),"Can't log into FTP");
 				return;
 			}
+
+			listener.setPercentageProgression(2, 5);
 			// Change directory
 			if (!ftpclient.changeWorkingDirectory(PPIDownloader.folder)) {
 				Toast.makeText(listener.getContext(), "Can't change to folder '" + PPIDownloader.folder + "'.", Toast.LENGTH_LONG).show();
@@ -110,6 +114,7 @@ public class PPIDownloader {
 			}
 
 			FTPFile[] files = ftpclient.listFiles();
+			listener.setPercentageProgression(3, 5);
 			boolean mustBeRead = false;
 			FTPFile ftpFile = PPIDownloader.lastFileModified(files, radarFilter);
 			File localFile = null;
@@ -128,9 +133,12 @@ public class PPIDownloader {
 					Log.d(PPIDownloader.class.getSimpleName(),"Ignored file '" + ftpFile.getName() + "'");
 				}
 			}
+
+			listener.setPercentageProgression(3, 5);
 			// If we need to read the file then control if any error occurs.
 			if (mustBeRead) {
 				downloadFile(ftpFile, localFile);
+				listener.setPercentageProgression(4, 5);
 			}
 		} catch (SocketException ex) {
 			Log.e(PPIDownloader.class.getSimpleName(),"",ex);

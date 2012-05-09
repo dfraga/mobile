@@ -12,6 +12,7 @@ import java.util.Properties;
 
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.os.Environment;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -31,16 +32,19 @@ public class Weather {
 	private static boolean generalDataFlag = false;
 
 	private static Bitmap bitMap;
-	@Deprecated
-	private static int[][] imagen;
+	//	@Deprecated
+	//	private static int[][] imagen;
 	private static int rows;
 	private static int columns;
+	private static int totalPixels;
+	private static WeatherProcessListener listener;
 
 	public static final Properties props = new Properties();
 
 	public static void process(final File inputFile, final WeatherProcessListener listener) {
+		Weather.listener = listener;
 
-
+		listener.setPercentageMessage("Decodificando fichero de radar...");
 		final long initTime = System.currentTimeMillis();
 		try {
 			// Cargamos properties
@@ -157,17 +161,20 @@ public class Weather {
 						sb.append("\n\t Interpretados:" + index + " Bits = " + ((index / 8) + (index % 8 == 0 ? 0 : 1)) + " BYTES ### Data[" + data.length + "]:\t").append(Weather.getHex(data));
 					} else if (Weather.BUFR_SECTION == SectionType.END_SECTION.getId()) {
 						try {
-							BMP bmp = new BMP();
-							bmp.saveBMP("Salida/" + fileName + ".bmp", Weather.imagen);
+							//							BMP bmp = new BMP();
+							//							bmp.saveBMP("Salida/" + fileName + ".bmp", Weather.imagen);
 
-							/* TODO almacenar o aprovechar decentemente los datos de Weather.imageGeneralData */
-							(new OutputStreamWriter(new FileOutputStream(new File("Salida", fileName + ".txt")))).append(fileName).append("\n").append(Weather.imageGeneralData.toString()).close();
+							/* TODO almacenar o aprovechar decentemente los datos de Weather.imageGeneralData (estructura serializada que incluya la imagen y sus datos)*/
+							File ruta_sd = Environment.getExternalStorageDirectory();
+							File localFolder = new File(ruta_sd.getAbsolutePath(), "Salida");
+
+							(new OutputStreamWriter(new FileOutputStream(new File(localFolder, fileName + ".txt")))).append(fileName).append("\n").append(Weather.imageGeneralData.toString()).close();
 
 							Log.d("Resultado","resultado de imagen:" + Weather.bitMap.getWidth() + "*" + Weather.bitMap.getHeight());
 
 							listener.openImage(Weather.bitMap);
-							Toast.makeText(listener.getContext(), "Saved file: " + fileName+".png", Toast.LENGTH_LONG).show();
-							FileOutputStream out = new FileOutputStream(fileName+".png");
+							Toast.makeText(listener.getContext(), "Save file: " + fileName+".png", Toast.LENGTH_LONG).show();
+							FileOutputStream out = new FileOutputStream(new File(ruta_sd.getAbsolutePath(), fileName+".png"));
 							Weather.bitMap.compress(Bitmap.CompressFormat.PNG, 90, out);
 							out.flush();
 							out.close();
@@ -221,9 +228,11 @@ public class Weather {
 				}
 				if (label.labelPropKey.equals("3.21.193")) {
 					Weather.bitMap = Bitmap.createBitmap(Weather.columns, Weather.rows, Bitmap.Config.ARGB_8888);
-					Weather.imagen = new int[Weather.rows][Weather.columns];
+					//					Weather.imagen = new int[Weather.rows][Weather.columns];
 					Weather.imagenFlag = true;
+					Weather.totalPixels = Weather.columns * Weather.rows;
 
+					Weather.listener.setPercentageMessage("Procesando imagen...");
 				}
 				if (label.labelPropKey.equals("3.1.192")) {
 					/* clase para datos de fecha /latitud / longitud.... */
@@ -257,21 +266,24 @@ public class Weather {
 								int pixelData = Weather.bitSetToInt(data, index, label.size, label.scale, label.referenceValue);
 
 								int alpha = 255;
-								int color = ColorUtils.getAlphaColor(alpha, ColorUtils.getHuePhasedColor(Color.CYAN, ((float)pixelData)/((float)3)));
+								int baseColor = Color.CYAN;
 								if(Weather.isUnknownValue(data, index, label.size)) {
 									//valor translucido/sombreado
 									alpha = 125;
-									color = Color.BLACK;
-								} else if (pixelData < 0) {
-									alpha = 125 + pixelData;
+									baseColor = Color.GRAY;
+								} else if (pixelData < 2) {
+									alpha = 0;
 								}
+								int color = ColorUtils.getAlphaColor(alpha, ColorUtils.getHuePhasedColor(baseColor, ((float)pixelData)/((float)3)));
 
 								int row = Weather.pixelIndex / Weather.columns;
 								int col = Weather.pixelIndex % Weather.columns;
 								//La imagen se describe de abajo-izquierda a arriba-derecha
-								Weather.imagen[Weather.rows -1 - row][col] = pixelData;
-								Weather.bitMap.setPixel(Weather.rows -1 - row, col, color);
+								//								Weather.imagen[Weather.rows -1 - row][col] = pixelData;
+								Weather.bitMap.setPixel(col, row, color);
 								Weather.pixelIndex++;
+
+								Weather.listener.setPercentageProgression(Weather.pixelIndex, Weather.totalPixels);
 							}
 							Weather.dataRepetition = 1;
 						}
@@ -318,6 +330,7 @@ public class Weather {
 		}
 		return index;
 	}
+
 	private static void getLabel(final byte b0, final byte b1, final List<Label> labels, final int nTimes) {
 		final Label currentLabel = new Label(new byte[]{b0, b1});
 		Weather.getLabel(currentLabel.type.id, currentLabel.x, currentLabel.y, labels, nTimes);
