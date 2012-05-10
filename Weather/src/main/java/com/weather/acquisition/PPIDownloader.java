@@ -121,6 +121,7 @@ public class PPIDownloader {
 			if(ftpFile != null) {
 				long size = ftpFile.getSize();
 				localFile = new File(folderDay, ftpFile.getName());
+				localFile.deleteOnExit();
 
 				//TODO cambiar comprobacion, pues estos ficheros se borran tras la descarga
 				if (!localFile.exists()) {
@@ -206,6 +207,7 @@ public class PPIDownloader {
 						&& untarFile.getName().toLowerCase().contains(".gz")) {
 					String targetName = untarFile.getName().replaceAll("(?i).gz", "");
 					File unzipFile = new File(folderDay, targetName);
+					unzipFile.deleteOnExit();
 					if (UncompressUtils.uncompressGzFile(untarFile, unzipFile)) {
 						Log.d(PPIDownloader.class.getSimpleName(),"Unzip file: " + targetName);
 						// procesar imagen radar.

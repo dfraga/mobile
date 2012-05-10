@@ -39,6 +39,7 @@ public class Weather {
 	private static int totalPixels;
 	private static WeatherProcessListener listener;
 
+	public static String WORKING_DIRECTORY = "SalidaWeather";
 	public static final Properties props = new Properties();
 
 	public static void process(final File inputFile, final WeatherProcessListener listener) {
@@ -166,18 +167,19 @@ public class Weather {
 
 							/* TODO almacenar o aprovechar decentemente los datos de Weather.imageGeneralData (estructura serializada que incluya la imagen y sus datos)*/
 							File ruta_sd = Environment.getExternalStorageDirectory();
-							File localFolder = new File(ruta_sd.getAbsolutePath(), "Salida");
+							File localFolder = new File(ruta_sd.getAbsolutePath(), Weather.WORKING_DIRECTORY);
 
 							(new OutputStreamWriter(new FileOutputStream(new File(localFolder, fileName + ".txt")))).append(fileName).append("\n").append(Weather.imageGeneralData.toString()).close();
 
 							Log.d("Resultado","resultado de imagen:" + Weather.bitMap.getWidth() + "*" + Weather.bitMap.getHeight());
-
-							listener.openImage(Weather.bitMap);
 							Toast.makeText(listener.getContext(), "Save file: " + fileName+".png", Toast.LENGTH_LONG).show();
-							FileOutputStream out = new FileOutputStream(new File(ruta_sd.getAbsolutePath(), fileName+".png"));
+							File outPng = new File(ruta_sd.getAbsolutePath(), fileName+".png");
+							FileOutputStream out = new FileOutputStream(outPng);
 							Weather.bitMap.compress(Bitmap.CompressFormat.PNG, 90, out);
 							out.flush();
 							out.close();
+
+							listener.openImage(Weather.bitMap, outPng.getAbsolutePath(), Weather.imageGeneralData);
 						} catch (Throwable e) {
 							listener.processException(e);
 						}
@@ -265,11 +267,11 @@ public class Weather {
 							for(int i = 0; i< Weather.dataRepetition; i++){
 								int pixelData = Weather.bitSetToInt(data, index, label.size, label.scale, label.referenceValue);
 
-								int alpha = 255;
-								int baseColor = Color.CYAN;
+								int alpha = 180;
+								int baseColor = Color.BLUE;
 								if(Weather.isUnknownValue(data, index, label.size)) {
 									//valor translucido/sombreado
-									alpha = 125;
+									alpha = 100;
 									baseColor = Color.GRAY;
 								} else if (pixelData < 2) {
 									alpha = 0;

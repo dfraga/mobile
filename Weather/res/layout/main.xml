@@ -6,37 +6,36 @@
 	<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	    android:orientation="horizontal"
 	    android:layout_width="wrap_content"
-	    android:layout_height="60px"
+	    android:layout_height="40dp"
 	    >
 
         <Button android:id="@+id/execute"
-            android:text="Ejecutar"
+            android:text="@string/execute"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="top" />
 
 	</LinearLayout>
 
-    <!--ProgressBar 
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:id="@+id/progressBar"
-        android:max="100"
-        android:paddingTop="10px"
-        android:paddingBottom="10px"
-    /-->
+	<com.google.android.maps.MapView
+	    xmlns:android="http://schemas.android.com/apk/res/android"
+	    android:id="@+id/mapView"
+	    android:layout_width="fill_parent"
+	    android:layout_height="fill_parent"
+	    android:clickable="true"
+	    android:apiKey="Your Maps API Key goes here"
+	/>
 
 
-    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-        android:orientation="vertical"
+    <!--LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:orientation="horizontal"
         android:layout_width="wrap_content"
-        android:layout_height="300px"
+        android:layout_height="80dp"
         >
 	    <ImageView android:id="@+id/imageView"
 	        android:layout_width="wrap_content"
 	        android:layout_height="wrap_content"
 	        />
-    </LinearLayout>
+    </LinearLayout-->
 
 </LinearLayout>

@@ -62,6 +62,7 @@ public class UncompressUtils {
 		TarArchiveEntry entry = debInputStream.getNextTarEntry();
 		while (entry != null) {
 			final File outputFile = new File(outputDir, entry.getName());
+			outputFile.deleteOnExit();
 			if (entry.isDirectory()) {
 				Log.d(UncompressUtils.class.getSimpleName(),String.format("Attempting to write output directory %s.", outputFile.getAbsolutePath()));
 				if (!outputFile.exists()) {

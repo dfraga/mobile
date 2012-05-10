@@ -8,6 +8,7 @@ import android.os.Looper;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.weather.Weather;
 import com.weather.acquisition.PPIDownloader;
 
 public class MainProcess extends Thread {
@@ -33,7 +34,7 @@ public class MainProcess extends Thread {
 
 			Toast.makeText(listener.getContext(), "RUNNING", Toast.LENGTH_LONG).show();
 			File ruta_sd = Environment.getExternalStorageDirectory();
-			File localFolder = new File(ruta_sd.getAbsolutePath(), "Salida");
+			File localFolder = new File(ruta_sd.getAbsolutePath(), Weather.WORKING_DIRECTORY);
 			localFolder.mkdir();
 
 			File localFolderObservations = new File(localFolder, "weatherTempDownloads");
