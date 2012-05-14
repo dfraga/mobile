@@ -67,7 +67,7 @@ public class MainProcess extends Thread {
 
 			adq.get(containsFilter, this.listener);
 
-		} catch (Exception ex) {
+		} catch (Throwable ex) {
 			listener.processException(ex);
 			Log.e(MainProcess.class.getSimpleName(),"", ex);
 		}

@@ -24,6 +24,10 @@ import com.weather.populate.Populator;
 
 public class Weather {
 
+	private static boolean DEBUG_LOG = true;
+	private static boolean DRAW_UNKNOWN = false;
+	private static int MIN_PIXEL_VALUE = 25;
+
 	private static final int FINAL_STEP = (((byte) 0x00 & 0xFF) << 24) + (((byte) 0x37 & 0xFF) << 16) + (((byte) 0x37 & 0xFF) << 8) + (((byte) 0x37 & 0xFF) << 0);
 
 	private static int BUFR_SECTION = 0;
@@ -87,13 +91,17 @@ public class Weather {
 						ByteBuffer bb = ByteBuffer.wrap(data);
 						byte[] dst = new byte[4];
 						bb.get(dst, 0, 4);
-						sb.append("\n\t· ").append(Weather.getChars(dst));
+						if(Weather.DEBUG_LOG) {
+							sb.append("\n\t· ").append(Weather.getChars(dst));
+						}
 
 						dst = new byte[3];
 						bb.get(dst, 0, 3);
 						int totalLength = Weather.int3(dst);
 						byte bufrVersion = bb.get();
-						sb.append("\n\t· totalLength ").append(totalLength).append("\n\t· bufrVersion ").append(bufrVersion);
+						if(Weather.DEBUG_LOG) {
+							sb.append("\n\t· totalLength ").append(totalLength).append("\n\t· bufrVersion ").append(bufrVersion);
+						}
 
 					} else if (Weather.BUFR_SECTION == SectionType.IDENTIFICATION_SECTION.getId()) {
 						ByteBuffer bb = ByteBuffer.wrap(data);
@@ -121,13 +129,14 @@ public class Weather {
 						if (optionalSection != (byte) 0) {
 							optionalPresence = true;
 						}
-						sb.append("\n\t· masterTableNumber ").append(masterTableNumber).append("\n\t· centre ").append(centre).append("\n\t· subCentre ").append(subCentre)
-						.append("\n\t· updateSequence ").append(updateSequence).append("\n\t· optionalSection ").append(optionalSection).append("\n\t· dataCategoryTableA ")
-						.append(dataCategoryTableA).append("\n\t· internationalDataSubCategory ").append(internationalDataSubCategory).append("\n\t· localSubCategory ")
-						.append(localSubCategory).append("\n\t· masterTableVersion ").append(masterTableVersion).append("\n\t· localTableVersion ").append(localTableVersion)
-						.append("\n\t· year ").append(year).append("\n\t· month ").append(month).append("\n\t· day ").append(day).append("\n\t· hour ").append(hour)
-						.append("\n\t· minute ").append(minute).append("\n\t· second ").append(second);
-
+						if(Weather.DEBUG_LOG) {
+							sb.append("\n\t· masterTableNumber ").append(masterTableNumber).append("\n\t· centre ").append(centre).append("\n\t· subCentre ").append(subCentre)
+							.append("\n\t· updateSequence ").append(updateSequence).append("\n\t· optionalSection ").append(optionalSection).append("\n\t· dataCategoryTableA ")
+							.append(dataCategoryTableA).append("\n\t· internationalDataSubCategory ").append(internationalDataSubCategory).append("\n\t· localSubCategory ")
+							.append(localSubCategory).append("\n\t· masterTableVersion ").append(masterTableVersion).append("\n\t· localTableVersion ").append(localTableVersion)
+							.append("\n\t· year ").append(year).append("\n\t· month ").append(month).append("\n\t· day ").append(day).append("\n\t· hour ").append(hour)
+							.append("\n\t· minute ").append(minute).append("\n\t· second ").append(second);
+						}
 					} else if (Weather.BUFR_SECTION == SectionType.LABELS_SECTION.getId()) {
 						ByteBuffer bb = ByteBuffer.wrap(data);
 						// reserved 0
@@ -138,16 +147,22 @@ public class Weather {
 						byte compressedDataMask = (byte) 0x40;
 						boolean observed = (dataType & observedDataMask) == observedDataMask;
 						boolean compressed = (dataType & compressedDataMask) == compressedDataMask;
-						sb.append("\n\t· dataSubsets ").append(dataSubsets).append("\n\t· observed ").append(observed).append("\n\t· compressed ").append(compressed).append("\n");
+						if(Weather.DEBUG_LOG) {
+							sb.append("\n\t· dataSubsets ").append(dataSubsets).append("\n\t· observed ").append(observed).append("\n\t· compressed ").append(compressed).append("\n");
+						}
 
 						while (bb.position() < bb.limit() - 1) {
 							Weather.getLabel(bb.get(), bb.get(), labels, 1);
 						}
 						for (Label label : labels) {
-							sb.append("\t").append(label).append("\n");
+							if(Weather.DEBUG_LOG) {
+								sb.append("\t").append(label).append("\n");
+							}
 						}
 					} else if (Weather.BUFR_SECTION == SectionType.OPTIONAL_SECTION.getId()) {
-						sb.append("\n\t").append(Weather.getHex(data));
+						if(Weather.DEBUG_LOG) {
+							sb.append("\n\t").append(Weather.getHex(data));
+						}
 					} else if (Weather.BUFR_SECTION == SectionType.DATA_SECTION.getId()) {
 
 						// bloque pruebas
@@ -159,7 +174,9 @@ public class Weather {
 						final Label[] arrayLabels = labels.toArray(new Label[0]);
 						index = Weather.processLabels(index, data, arrayLabels, 1, 1);
 						// bloque pruebas
-						sb.append("\n\t Interpretados:" + index + " Bits = " + ((index / 8) + (index % 8 == 0 ? 0 : 1)) + " BYTES ### Data[" + data.length + "]:\t").append(Weather.getHex(data));
+						if(Weather.DEBUG_LOG) {
+							sb.append("\n\t Interpretados:" + index + " Bits = " + ((index / 8) + (index % 8 == 0 ? 0 : 1)) + " BYTES ### Data[" + data.length + "]:\t").append(Weather.getHex(data));
+						}
 					} else if (Weather.BUFR_SECTION == SectionType.END_SECTION.getId()) {
 						try {
 							//							BMP bmp = new BMP();
@@ -171,7 +188,9 @@ public class Weather {
 
 							(new OutputStreamWriter(new FileOutputStream(new File(localFolder, fileName + ".txt")))).append(fileName).append("\n").append(Weather.imageGeneralData.toString()).close();
 
-							Log.d("Resultado","resultado de imagen:" + Weather.bitMap.getWidth() + "*" + Weather.bitMap.getHeight());
+							if(Weather.DEBUG_LOG) {
+								Log.d("Resultado","resultado de imagen:" + Weather.bitMap.getWidth() + "*" + Weather.bitMap.getHeight());
+							}
 							Toast.makeText(listener.getContext(), "Save file: " + fileName+".png", Toast.LENGTH_LONG).show();
 							File outPng = new File(ruta_sd.getAbsolutePath(), fileName+".png");
 							FileOutputStream out = new FileOutputStream(outPng);
@@ -189,14 +208,21 @@ public class Weather {
 				}
 
 				if (sb.length() > 0) {
-					Log.d(Weather.class.getSimpleName(),"@@[" + SectionType.values()[Weather.BUFR_SECTION] + "]" + sb + "\n\n");
+					if(Weather.DEBUG_LOG) {
+						Log.d(Weather.class.getSimpleName(),"@@[" + SectionType.values()[Weather.BUFR_SECTION] + "]" + sb + "\n\n");
+						Log.d(Weather.class.getSimpleName(),"min:max @@[" + Weather.minValue + " : " + Weather.maxValue + "]");
+
+
+					}
 				}
 
 				data = new byte[step];
 
 			}
 			final String finalMsg = "Fin de proceso en: " + (System.currentTimeMillis() - initTime) + " ms";
-			Log.d(Weather.class.getSimpleName(),finalMsg);
+			if(Weather.DEBUG_LOG) {
+				Log.d(Weather.class.getSimpleName(),finalMsg);
+			}
 			//System.out.println(finalMsg);
 
 		} catch (final Exception e) {
@@ -210,17 +236,24 @@ public class Weather {
 	private static int dataRepetition = 1;
 	private static Populator<Class3X01Y192> imageGeneralData;
 
+	private static int minValue = 0;
+	private static int maxValue = 0;
+
 	private static int processLabels(int index, final byte[] data, final Label[] arrayLabels, final int repeats, final int level) {
 		String levelSt = "";
 		for (int n = 0; n < level; n++) {
 			levelSt += "\t";
 		}
 		for (int n = 0; n < repeats; n++) {
-			Log.d(Weather.class.getSimpleName(),levelSt + "## Nº" + (n + 1));
+			if(Weather.DEBUG_LOG) {
+				Log.d(Weather.class.getSimpleName(),levelSt + "## Nº" + (n + 1));
+			}
 
 			for (int arrayIndex = 0; arrayIndex < arrayLabels.length; arrayIndex++) {
 				Label label = arrayLabels[arrayIndex];
-				Log.d(Weather.class.getSimpleName(),levelSt + label + " SIZE:" + label.size + " SCALE:" + label.scale);
+				if(Weather.DEBUG_LOG) {
+					Log.d(Weather.class.getSimpleName(),levelSt + label + " SIZE:" + label.size + " SCALE:" + label.scale);
+				}
 
 				if (label.labelPropKey.equals("0.30.21")) {
 					Weather.rows = Weather.bitSetToInt(data, index, label.size, label.scale, label.referenceValue);
@@ -245,8 +278,10 @@ public class Weather {
 				if (label.type == LabelType.DESCRIPTOR) {
 					// escala asociada a etiquetas: 9087 con escala 2 representa el valor 90.87
 					Number numberData = label.scale == 0 ? (label.size < 33 ? Weather.bitSetToInt(data, index, label.size, label.scale, label.referenceValue) : Weather.bitSetToLong(data, index, label.size, label.scale, label.referenceValue)) : (Weather.bitSetToDouble(data, index, label.size, label.scale, label.referenceValue));
-					Log.d(Weather.class.getSimpleName(),levelSt
-							+ "\t" + numberData + (Weather.isUnknownValue(data, index, label.size) ? "\t# NO DATA #" : ""));
+					if(Weather.DEBUG_LOG) {
+						Log.d(Weather.class.getSimpleName(),levelSt
+								+ "\t" + numberData + (Weather.isUnknownValue(data, index, label.size) ? "\t# NO DATA #" : ""));
+					}
 
 					if (Weather.generalDataFlag) {
 						final Class3X01Y192 lastOffer = Weather.imageGeneralData.getLastOffer();
@@ -267,16 +302,24 @@ public class Weather {
 							for(int i = 0; i< Weather.dataRepetition; i++){
 								int pixelData = Weather.bitSetToInt(data, index, label.size, label.scale, label.referenceValue);
 
-								int alpha = 180;
-								int baseColor = Color.BLUE;
+								int alpha = 128;
+								int baseColor = Color.GREEN;
 								if(Weather.isUnknownValue(data, index, label.size)) {
 									//valor translucido/sombreado
-									alpha = 100;
+									alpha = Weather.DRAW_UNKNOWN ? 100:0;
 									baseColor = Color.GRAY;
-								} else if (pixelData < 2) {
+								} else if (pixelData < Weather.MIN_PIXEL_VALUE) {
+									//XXX rango en decibelios de -31 a 59, menor a 15 despreciable
 									alpha = 0;
 								}
-								int color = ColorUtils.getAlphaColor(alpha, ColorUtils.getHuePhasedColor(baseColor, ((float)pixelData)/((float)3)));
+								int color = ColorUtils.getAlphaColor(alpha, ColorUtils.getHuePhasedColor(baseColor, (pixelData * 3)));
+
+								if(Weather.minValue>pixelData) {
+									Weather.minValue = pixelData;
+								}
+								if(pixelData>Weather.maxValue) {
+									Weather.maxValue = pixelData;
+								}
 
 								int row = Weather.pixelIndex / Weather.columns;
 								int col = Weather.pixelIndex % Weather.columns;
@@ -321,10 +364,14 @@ public class Weather {
 					sbm.append("\t#Iteraciones: " + count);
 
 					if (Weather.imagenFlag) {
-						Log.d(Weather.class.getSimpleName(),"Multiple :" + countLabel.labelPropKey + " iteracciones:" + count);
+						if(Weather.DEBUG_LOG) {
+							Log.d(Weather.class.getSimpleName(),"Multiple :" + countLabel.labelPropKey + " iteracciones:" + count);
+						}
 					}
 
-					Log.d(Weather.class.getSimpleName(),sbm.toString());
+					if(Weather.DEBUG_LOG) {
+						Log.d(Weather.class.getSimpleName(),sbm.toString());
+					}
 					index = Weather.processLabels(index, data, labelSequence, count, level + 1);
 				}
 
@@ -364,7 +411,7 @@ public class Weather {
 					Weather.getLabel(Integer.valueOf(labelKey[0]), Integer.valueOf(labelKey[1]), Integer.valueOf(labelKey[2]), labels, instances);
 				}
 			} else {
-				Log.d(Weather.class.getSimpleName(),"@@@ NO EXISTE PROPERTY " + sequenceLabel.labelPropKey);
+				Log.e(Weather.class.getSimpleName(),"@@@ NO EXISTE PROPERTY " + sequenceLabel.labelPropKey);
 			}
 		}
 	}

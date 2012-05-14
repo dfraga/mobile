@@ -23,9 +23,13 @@
 	    android:layout_width="fill_parent"
 	    android:layout_height="fill_parent"
 	    android:clickable="true"
-	    android:apiKey="Your Maps API Key goes here"
+        android:apiKey="00QztEBgmSrZ93z9NaX6nlDLlK-EdcWchbTLwaw"
 	/>
 
+	<!-- 
+          debug: android:apiKey="00QztEBgmSrZ93z9NaX6nlDLlK-EdcWchbTLwaw"
+          dfraga: android:apiKey="00QztEBgmSraMDHUcL1BN0vaudJu05BQ-LXExbQ"
+	 -->
 
     <!--LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
         android:orientation="horizontal"

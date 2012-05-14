@@ -3,12 +3,15 @@ package com.android.weather;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.location.Location;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -17,7 +20,7 @@ import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.Toast;
 
-import com.android.utils.GroundOverlay;
+import com.android.utils.MapOverlay;
 import com.google.android.maps.GeoPoint;
 import com.google.android.maps.MapActivity;
 import com.google.android.maps.MapController;
@@ -27,6 +30,16 @@ import com.weather.populate.Class3X01Y192;
 import com.weather.populate.Populator;
 
 public class WeatherActivity extends MapActivity implements WeatherProcessListener {
+
+	{
+		Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler() {
+
+			@Override
+			public void uncaughtException(final Thread thread, final Throwable ex) {
+				processException(ex);
+			}
+		});
+	}
 
 	private Button applyButton;
 	private static ProgressDialog progressDialog;
@@ -38,8 +51,8 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 	private String pngPath;
 	private Populator<Class3X01Y192> imageGeneralData;
 
-	//	private ImageView imageView;
 	private MapView mapView;
+	//	private ImageView imageView;
 
 	private final Runnable processErrorAction = new ExceptionActionRunnable() {
 		@Override
@@ -84,11 +97,30 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 
 			processing.set(false);
 			WeatherActivity.progress = 0;
+
+			//Obtenemos ultima posicion conocida para centrar el mapa
+			LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+			String locationProvider = LocationManager.NETWORK_PROVIDER;
+			Location lastKnownLocation = locationManager.getLastKnownLocation(locationProvider);
+
+			//TODO obetener centro por defecto de configuracion
+			final GeoPoint center = lastKnownLocation == null ?
+					getGeoPoint(43.16909, -8.52684):
+						getGeoPoint(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
+					centerMap(center);
+					mapView.invalidate();
 		} catch (final Exception e) {
 			// No compatible file manager.
 			processException(e);
 		}
 
+	}
+
+	private void centerMap(final GeoPoint center) {
+		final MapController mapController = mapView.getController();
+		mapController.setCenter(center);
+		mapController.animateTo(center);
+		mapController.setZoom(8);
 	}
 
 	private final Runnable processBeginAction = new Runnable() {
@@ -125,36 +157,24 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 		public void run() {
 			//imageView.setImageBitmap(imBitmap);
 
-			Toast.makeText(WeatherActivity.this, "Photo processing finished.",
-					Toast.LENGTH_LONG).show();
-
+			//			Toast.makeText(WeatherActivity.this, "Photo processing finished.",
+			//					Toast.LENGTH_LONG).show();
 			resetLayout();
 
-			/* TODO registrar android:apiKey para mapa de google (main.xml) */
-
-			final MapController map = mapView.getController();
-			map.setCenter(getGeoPoint(Class3X01Y192.RADAR_LATITUDE, Class3X01Y192.RADAR_LONGITUDE));
-			map.setZoom(8);
-			//map.setTypeId("terrain");
+			/* XXX registrar android:apiKey para mapa de google (main.xml) */
+			final GeoPoint center = getGeoPoint(Class3X01Y192.RADAR_LATITUDE, Class3X01Y192.RADAR_LONGITUDE);
+			centerMap(center);
 
 
 			List<Overlay> overlays = mapView.getOverlays();
 			overlays.clear();
 
-			GroundOverlay overlayImage = new GroundOverlay(mapView,
+			MapOverlay mapOverlay = new MapOverlay(center, imBitmap,
 					getGeoPoint(Class3X01Y192.LATITUDE_NW, Class3X01Y192.LONGITUDE_NW),
-					getGeoPoint(Class3X01Y192.LATITUDE_SE, Class3X01Y192.LONGITUDE_SE),
-					imBitmap,
-					"title","snippet");
+					getGeoPoint(Class3X01Y192.LATITUDE_SE, Class3X01Y192.LONGITUDE_SE));
+			overlays.add(mapOverlay);
 
-			overlayImage.setMarker(overlayImage.drawable);
-
-			//FIXME no se muestra la imagen
-
-			//overlays.add(0, overlayRadar);
 			mapView.invalidate();
-
-			//TODO grafico de escala fijo. en imageView por ejemplo
 
 		}
 
@@ -163,6 +183,10 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 	private GeoPoint getGeoPoint(final Class3X01Y192 latitude, final Class3X01Y192 longitude) {
 		return new GeoPoint((int)(1e6 * imageGeneralData.getData(latitude).getData().doubleValue()),
 				(int)(1e6 * imageGeneralData.getData(longitude).getData().doubleValue()));
+	}
+
+	private GeoPoint getGeoPoint(final double latitude, final double longitude) {
+		return new GeoPoint((int)(1e6 * latitude), (int)(1e6 * longitude));
 	}
 
 	private void resetLayout() {
@@ -224,8 +248,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 		Log.e("error", error);
 		Toast.makeText(WeatherActivity.this, error, Toast.LENGTH_SHORT).show();
 
-		((ExceptionActionRunnable) processErrorAction)
-		.setException((Exception) e);
+		((ExceptionActionRunnable) processErrorAction).setException((Exception) e);
 		progressThreadHandler.post(processErrorAction);
 	}
 
@@ -245,12 +268,13 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 				Log.e("set progress", "error asignando valor", e);
 			}
 
-			if (WeatherActivity.progress - lastProgressUpdate > 0) {
+			if (WeatherActivity.progress - lastProgressUpdate > 5) {
 				lastProgressUpdate = WeatherActivity.progress;
 				progressThreadHandler.post(WeatherActivity.progressThread);
 			}
+		} else {
+			WeatherActivity.progress = 0;
 		}
-		WeatherActivity.progress = 0;
 	}
 
 	@Override
@@ -274,7 +298,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 
 	@Override
 	protected boolean isRouteDisplayed() {
-		// TODO informacion de rutas
+		// Definir si se usa informacion de rutas
 		return false;
 	}
 

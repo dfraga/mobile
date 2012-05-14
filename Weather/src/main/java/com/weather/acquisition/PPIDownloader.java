@@ -69,6 +69,7 @@ public class PPIDownloader {
 			ftpclient.connect(PPIDownloader.server);
 			ftpclient.setFileTransferMode(FTP.BINARY_FILE_TYPE);
 			ftpclient.enterLocalPassiveMode();
+			ftpclient.setConnectTimeout(30000);
 
 			// Loggin
 			if (!ftpclient.login("anonymous", null)) {
