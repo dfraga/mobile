@@ -3,17 +3,28 @@
     android:orientation="vertical" android:layout_width="fill_parent" android:layout_height="fill_parent"
     android:weightSum="1">
 
-	<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-	    android:orientation="horizontal"
+    	<LinearLayout
+	    xmlns:android="http://schemas.android.com/apk/res/android"
 	    android:layout_width="wrap_content"
-	    android:layout_height="40dp"
-	    >
+	    android:layout_height="wrap_content"
+	    android:layout_gravity="top"
+	    android:layout_margin="0dp"
+	    android:orientation="horizontal" >
 
-        <Button android:id="@+id/execute"
-            android:text="@string/execute"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:gravity="top" />
+            <Button
+                android:id="@+id/execute"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:gravity="center_vertical"
+                android:text="@string/execute" />
+
+    		<ExpandableListView
+    		    android:id="@+id/radarComboList"
+    		    android:layout_width="fill_parent"
+    		    android:layout_height="wrap_content"
+                android:layout_gravity="top"
+                android:gravity="top" />
 
 	</LinearLayout>
 

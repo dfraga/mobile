@@ -14,7 +14,6 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Environment;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.android.utils.ColorUtils;
 import com.android.weather.WeatherProcessListener;
@@ -24,42 +23,52 @@ import com.weather.populate.Populator;
 
 public class Weather {
 
-	private static boolean DEBUG_LOG = true;
-	private static boolean DRAW_UNKNOWN = false;
-	private static int MIN_PIXEL_VALUE = 25;
-
-	private static final int FINAL_STEP = (((byte) 0x00 & 0xFF) << 24) + (((byte) 0x37 & 0xFF) << 16) + (((byte) 0x37 & 0xFF) << 8) + (((byte) 0x37 & 0xFF) << 0);
-
-	private static int BUFR_SECTION = 0;
-
-	private static boolean imagenFlag = false;
-	private static boolean generalDataFlag = false;
-
-	private static Bitmap bitMap;
-	//	@Deprecated
-	//	private static int[][] imagen;
-	private static int rows;
-	private static int columns;
-	private static int totalPixels;
-	private static WeatherProcessListener listener;
-
 	public static String WORKING_DIRECTORY = "SalidaWeather";
 	public static final Properties props = new Properties();
 
-	public static void process(final File inputFile, final WeatherProcessListener listener) {
-		Weather.listener = listener;
+	private static boolean DEBUG_LOG = false;
+	private static boolean DRAW_UNKNOWN = false;
+	private static final int FINAL_STEP = (((byte) 0x00 & 0xFF) << 24) + (((byte) 0x37 & 0xFF) << 16) + (((byte) 0x37 & 0xFF) << 8) + (((byte) 0x37 & 0xFF) << 0);
 
-		listener.setPercentageMessage("Decodificando fichero de radar...");
+	private static int MIN_PIXEL_VALUE = 25;
+	private int minValue = 0;
+	private int maxValue = 0;
+
+	private boolean imagenFlag = false;
+	private boolean generalDataFlag = false;
+
+	private final WeatherProcessListener listener;
+	private Bitmap bitMap;
+	private int rows;
+	private int columns;
+	private int totalPixels;
+	private int bufrSection;
+
+	private int pixelIndex = 0;
+	private int dataRepetition = 1;
+
+	private Populator<Class3X01Y192> imageGeneralData;
+
+	public Weather(final WeatherProcessListener listener) {
+		this.listener = listener;
+	}
+
+	public void process(final File inputFile) {
+
+
+		listener.setPercentageMessage("Decodificando fichero...");
 		final long initTime = System.currentTimeMillis();
 		try {
 			// Cargamos properties
-			final InputStream porpertiesIs = Weather.class.getClassLoader().getResourceAsStream("sizes2.properties");
-			Weather.props.load(porpertiesIs);
+			if(Weather.props == null || Weather.props.isEmpty()) {
+				final InputStream porpertiesIs = Weather.class.getClassLoader().getResourceAsStream("sizes2.properties");
+				Weather.props.load(porpertiesIs);
+			}
 
 			// Cargamos fichero de datos
 			final String fileName = inputFile.getName();
 			final InputStream is = new FileInputStream(inputFile);
-			Toast.makeText(listener.getContext(), "PROCESS PPI " + fileName, Toast.LENGTH_LONG).show();
+			//Toast.makeText(listener.getContext(), "PROCESS PPI " + fileName, Toast.LENGTH_LONG).show();
 
 			boolean section = false;
 
@@ -71,14 +80,14 @@ public class Weather {
 				if (section) {
 					section = false;
 
-					step = Weather.int3(data);
+					step = this.int3(data);
 
 					step = step == Weather.FINAL_STEP ? 1 : step - 3;
-					Weather.BUFR_SECTION++;
+					bufrSection++;
 
 				} else {
-					if (Weather.BUFR_SECTION == SectionType.OPTIONAL_SECTION.getId() && !optionalPresence) {
-						Weather.BUFR_SECTION++;
+					if (bufrSection == SectionType.OPTIONAL_SECTION.getId() && !optionalPresence) {
+						bufrSection++;
 					}
 					section = true;
 					step = 3;
@@ -87,23 +96,23 @@ public class Weather {
 				final StringBuffer sb = new StringBuffer();
 
 				if (section) {
-					if (Weather.BUFR_SECTION == SectionType.INDICATOR_SECTION.getId()) {
+					if (bufrSection == SectionType.INDICATOR_SECTION.getId()) {
 						ByteBuffer bb = ByteBuffer.wrap(data);
 						byte[] dst = new byte[4];
 						bb.get(dst, 0, 4);
 						if(Weather.DEBUG_LOG) {
-							sb.append("\n\t· ").append(Weather.getChars(dst));
+							sb.append("\n\t· ").append(this.getChars(dst));
 						}
 
 						dst = new byte[3];
 						bb.get(dst, 0, 3);
-						int totalLength = Weather.int3(dst);
+						int totalLength = this.int3(dst);
 						byte bufrVersion = bb.get();
 						if(Weather.DEBUG_LOG) {
 							sb.append("\n\t· totalLength ").append(totalLength).append("\n\t· bufrVersion ").append(bufrVersion);
 						}
 
-					} else if (Weather.BUFR_SECTION == SectionType.IDENTIFICATION_SECTION.getId()) {
+					} else if (bufrSection == SectionType.IDENTIFICATION_SECTION.getId()) {
 						ByteBuffer bb = ByteBuffer.wrap(data);
 						// Bufr master table (zero if standard WMO FM 94-IX BUFR
 						// tables are used)
@@ -137,7 +146,7 @@ public class Weather {
 							.append("\n\t· year ").append(year).append("\n\t· month ").append(month).append("\n\t· day ").append(day).append("\n\t· hour ").append(hour)
 							.append("\n\t· minute ").append(minute).append("\n\t· second ").append(second);
 						}
-					} else if (Weather.BUFR_SECTION == SectionType.LABELS_SECTION.getId()) {
+					} else if (bufrSection == SectionType.LABELS_SECTION.getId()) {
 						ByteBuffer bb = ByteBuffer.wrap(data);
 						// reserved 0
 						bb.get();
@@ -152,65 +161,65 @@ public class Weather {
 						}
 
 						while (bb.position() < bb.limit() - 1) {
-							Weather.getLabel(bb.get(), bb.get(), labels, 1);
+							this.getLabel(bb.get(), bb.get(), labels, 1);
 						}
 						for (Label label : labels) {
 							if(Weather.DEBUG_LOG) {
 								sb.append("\t").append(label).append("\n");
 							}
 						}
-					} else if (Weather.BUFR_SECTION == SectionType.OPTIONAL_SECTION.getId()) {
+					} else if (bufrSection == SectionType.OPTIONAL_SECTION.getId()) {
 						if(Weather.DEBUG_LOG) {
-							sb.append("\n\t").append(Weather.getHex(data));
+							sb.append("\n\t").append(this.getHex(data));
 						}
-					} else if (Weather.BUFR_SECTION == SectionType.DATA_SECTION.getId()) {
+					} else if (bufrSection == SectionType.DATA_SECTION.getId()) {
 
 						// bloque pruebas
 						// Log.d(Weather.class.getSimpleName(),"DataBitSet:" +
-						// Weather.formattedBitSet(data));
+						// this.formattedBitSet(data));
 
 						// Primer byte reservado --> index = 8
 						int index = 8;
 						final Label[] arrayLabels = labels.toArray(new Label[0]);
-						index = Weather.processLabels(index, data, arrayLabels, 1, 1);
+						index = this.processLabels(index, data, arrayLabels, 1, 1);
 						// bloque pruebas
 						if(Weather.DEBUG_LOG) {
-							sb.append("\n\t Interpretados:" + index + " Bits = " + ((index / 8) + (index % 8 == 0 ? 0 : 1)) + " BYTES ### Data[" + data.length + "]:\t").append(Weather.getHex(data));
+							sb.append("\n\t Interpretados:" + index + " Bits = " + ((index / 8) + (index % 8 == 0 ? 0 : 1)) + " BYTES ### Data[" + data.length + "]:\t").append(this.getHex(data));
 						}
-					} else if (Weather.BUFR_SECTION == SectionType.END_SECTION.getId()) {
+					} else if (bufrSection == SectionType.END_SECTION.getId()) {
 						try {
 							//							BMP bmp = new BMP();
-							//							bmp.saveBMP("Salida/" + fileName + ".bmp", Weather.imagen);
+							//							bmp.saveBMP("Salida/" + fileName + ".bmp", this.imagen);
 
-							/* TODO almacenar o aprovechar decentemente los datos de Weather.imageGeneralData (estructura serializada que incluya la imagen y sus datos)*/
+							/* TODO almacenar o aprovechar decentemente los datos de this.imageGeneralData (estructura serializada que incluya la imagen y sus datos)*/
 							File ruta_sd = Environment.getExternalStorageDirectory();
 							File localFolder = new File(ruta_sd.getAbsolutePath(), Weather.WORKING_DIRECTORY);
 
-							(new OutputStreamWriter(new FileOutputStream(new File(localFolder, fileName + ".txt")))).append(fileName).append("\n").append(Weather.imageGeneralData.toString()).close();
+							(new OutputStreamWriter(new FileOutputStream(new File(localFolder, fileName + ".txt")))).append(fileName).append("\n").append(this.imageGeneralData.toString()).close();
 
 							if(Weather.DEBUG_LOG) {
-								Log.d("Resultado","resultado de imagen:" + Weather.bitMap.getWidth() + "*" + Weather.bitMap.getHeight());
+								Log.d("Resultado","resultado de imagen:" + this.bitMap.getWidth() + "*" + this.bitMap.getHeight());
 							}
-							Toast.makeText(listener.getContext(), "Save file: " + fileName+".png", Toast.LENGTH_LONG).show();
-							File outPng = new File(ruta_sd.getAbsolutePath(), fileName+".png");
+							//Toast.makeText(listener.getContext(), "Save file: " + fileName+".png", Toast.LENGTH_LONG).show();
+							File outPng = new File(localFolder, fileName+".png");
 							FileOutputStream out = new FileOutputStream(outPng);
-							Weather.bitMap.compress(Bitmap.CompressFormat.PNG, 90, out);
+							this.bitMap.compress(Bitmap.CompressFormat.PNG, 90, out);
 							out.flush();
 							out.close();
 
-							listener.openImage(Weather.bitMap, outPng.getAbsolutePath(), Weather.imageGeneralData);
+							listener.setProcessedImage(this.bitMap, outPng.getAbsolutePath(), this.imageGeneralData);
 						} catch (Throwable e) {
 							listener.processException(e);
 						}
 					}
 				} else {
-					// Nada sb.append(Weather.getHex(data));
+					// Nada sb.append(this.getHex(data));
 				}
 
 				if (sb.length() > 0) {
 					if(Weather.DEBUG_LOG) {
-						Log.d(Weather.class.getSimpleName(),"@@[" + SectionType.values()[Weather.BUFR_SECTION] + "]" + sb + "\n\n");
-						Log.d(Weather.class.getSimpleName(),"min:max @@[" + Weather.minValue + " : " + Weather.maxValue + "]");
+						Log.d(Weather.class.getSimpleName(),"@@[" + SectionType.values()[bufrSection] + "]" + sb + "\n\n");
+						Log.d(Weather.class.getSimpleName(),"min:max @@[" + this.minValue + " : " + this.maxValue + "]");
 
 
 					}
@@ -232,14 +241,7 @@ public class Weather {
 
 	}
 
-	private static int pixelIndex = 0;
-	private static int dataRepetition = 1;
-	private static Populator<Class3X01Y192> imageGeneralData;
-
-	private static int minValue = 0;
-	private static int maxValue = 0;
-
-	private static int processLabels(int index, final byte[] data, final Label[] arrayLabels, final int repeats, final int level) {
+	private int processLabels(int index, final byte[] data, final Label[] arrayLabels, final int repeats, final int level) {
 		String levelSt = "";
 		for (int n = 0; n < level; n++) {
 			levelSt += "\t";
@@ -256,55 +258,55 @@ public class Weather {
 				}
 
 				if (label.labelPropKey.equals("0.30.21")) {
-					Weather.rows = Weather.bitSetToInt(data, index, label.size, label.scale, label.referenceValue);
+					this.rows = this.bitSetToInt(data, index, label.size, label.scale, label.referenceValue);
 				}
 				if (label.labelPropKey.equals("0.30.22")) {
-					Weather.columns = Weather.bitSetToInt(data, index, label.size, label.scale, label.referenceValue);
+					this.columns = this.bitSetToInt(data, index, label.size, label.scale, label.referenceValue);
 				}
 				if (label.labelPropKey.equals("3.21.193")) {
-					Weather.bitMap = Bitmap.createBitmap(Weather.columns, Weather.rows, Bitmap.Config.ARGB_8888);
-					//					Weather.imagen = new int[Weather.rows][Weather.columns];
-					Weather.imagenFlag = true;
-					Weather.totalPixels = Weather.columns * Weather.rows;
+					this.bitMap = Bitmap.createBitmap(this.columns, this.rows, Bitmap.Config.ARGB_8888);
+					//					this.imagen = new int[this.rows][this.columns];
+					this.imagenFlag = true;
+					this.totalPixels = this.columns * this.rows;
 
-					Weather.listener.setPercentageMessage("Procesando imagen...");
+					this.listener.setPercentageMessage("Procesando imagen...");
 				}
 				if (label.labelPropKey.equals("3.1.192")) {
 					/* clase para datos de fecha /latitud / longitud.... */
-					Weather.imageGeneralData = new Populator<Class3X01Y192>();
-					Weather.generalDataFlag = true;
+					this.imageGeneralData = new Populator<Class3X01Y192>();
+					this.generalDataFlag = true;
 				}
 
 				if (label.type == LabelType.DESCRIPTOR) {
 					// escala asociada a etiquetas: 9087 con escala 2 representa el valor 90.87
-					Number numberData = label.scale == 0 ? (label.size < 33 ? Weather.bitSetToInt(data, index, label.size, label.scale, label.referenceValue) : Weather.bitSetToLong(data, index, label.size, label.scale, label.referenceValue)) : (Weather.bitSetToDouble(data, index, label.size, label.scale, label.referenceValue));
+					Number numberData = label.scale == 0 ? (label.size < 33 ? this.bitSetToInt(data, index, label.size, label.scale, label.referenceValue) : this.bitSetToLong(data, index, label.size, label.scale, label.referenceValue)) : (this.bitSetToDouble(data, index, label.size, label.scale, label.referenceValue));
 					if(Weather.DEBUG_LOG) {
 						Log.d(Weather.class.getSimpleName(),levelSt
-								+ "\t" + numberData + (Weather.isUnknownValue(data, index, label.size) ? "\t# NO DATA #" : ""));
+								+ "\t" + numberData + (this.isUnknownValue(data, index, label.size) ? "\t# NO DATA #" : ""));
 					}
 
-					if (Weather.generalDataFlag) {
-						final Class3X01Y192 lastOffer = Weather.imageGeneralData.getLastOffer();
-						final Class3X01Y192 current = Class3X01Y192.getById(lastOffer==null ? 0 :lastOffer.getId()+1);
+					if (this.generalDataFlag) {
+						final Class3X01Y192 lastOffer = this.imageGeneralData.getLastOffer();
+						final Class3X01Y192 current = Class3X01Y192.getById(lastOffer==null ? 0 :lastOffer.getId().intValue()+1);
 						if (current.isNoMoreData()) {
-							Weather.generalDataFlag = false;
+							this.generalDataFlag = false;
 						} else {
 							LabelData labelData = new LabelData(label, numberData);
-							Weather.imageGeneralData.offer(current, labelData);
+							this.imageGeneralData.offer(current, labelData);
 						}
 
 					}
-					if (Weather.imagenFlag) {
+					if (this.imagenFlag) {
 						if (label.labelPropKey.equals("0.31.12")) {
-							Weather.dataRepetition = Weather.bitSetToInt(data, index, label.size, label.scale, label.referenceValue);
+							this.dataRepetition = this.bitSetToInt(data, index, label.size, label.scale, label.referenceValue);
 						}
 						if (label.labelPropKey.equals("0.30.2")) {
-							for(int i = 0; i< Weather.dataRepetition; i++){
-								int pixelData = Weather.bitSetToInt(data, index, label.size, label.scale, label.referenceValue);
+							for(int i = 0; i< this.dataRepetition; i++){
+								int pixelData = this.bitSetToInt(data, index, label.size, label.scale, label.referenceValue);
 
 								int alpha = 128;
 								int baseColor = Color.GREEN;
-								if(Weather.isUnknownValue(data, index, label.size)) {
+								if(this.isUnknownValue(data, index, label.size)) {
 									//valor translucido/sombreado
 									alpha = Weather.DRAW_UNKNOWN ? 100:0;
 									baseColor = Color.GRAY;
@@ -314,23 +316,23 @@ public class Weather {
 								}
 								int color = ColorUtils.getAlphaColor(alpha, ColorUtils.getHuePhasedColor(baseColor, (pixelData * 3)));
 
-								if(Weather.minValue>pixelData) {
-									Weather.minValue = pixelData;
+								if(this.minValue > pixelData) {
+									this.minValue = pixelData;
 								}
-								if(pixelData>Weather.maxValue) {
-									Weather.maxValue = pixelData;
+								if(pixelData > this.maxValue) {
+									this.maxValue = pixelData;
 								}
 
-								int row = Weather.pixelIndex / Weather.columns;
-								int col = Weather.pixelIndex % Weather.columns;
+								int row = this.pixelIndex / this.columns;
+								int col = this.pixelIndex % this.columns;
 								//La imagen se describe de abajo-izquierda a arriba-derecha
-								//								Weather.imagen[Weather.rows -1 - row][col] = pixelData;
-								Weather.bitMap.setPixel(col, row, color);
-								Weather.pixelIndex++;
+								//								this.imagen[this.rows -1 - row][col] = pixelData;
+								this.bitMap.setPixel(col, row, color);
+								this.pixelIndex++;
 
-								Weather.listener.setPercentageProgression(Weather.pixelIndex, Weather.totalPixels);
+								this.listener.setPercentageProgression(this.pixelIndex, this.totalPixels);
 							}
-							Weather.dataRepetition = 1;
+							this.dataRepetition = 1;
 						}
 					}
 
@@ -347,23 +349,31 @@ public class Weather {
 					Label countLabel = arrayLabels[arrayIndex];
 					Label[] labelSequence = new Label[label.x];
 
-					StringBuffer sbm = new StringBuffer(levelSt + "@@ MULTIPLE:"
-							// + " index de labels:" + arrayIndex
-							+ " Contador en " + countLabel + " secuencia --> ");
+					StringBuffer sbm = new StringBuffer();
+
+					if(Weather.DEBUG_LOG) {
+						sbm.append(levelSt + "@@ MULTIPLE:"
+								// + " index de labels:" + arrayIndex
+								+ " Contador en " + countLabel + " secuencia --> ");
+					}
 
 					int repIndex = 0;
 					arrayIndex++;
 					for (int i = arrayIndex; i < arrayIndex + label.x; i++) {
-						sbm.append(arrayLabels[i]).append(" | ");
+						if(Weather.DEBUG_LOG) {
+							sbm.append(arrayLabels[i]).append(" | ");
+						}
 						labelSequence[repIndex] = arrayLabels[i];
 						repIndex++;
 					}
-					Integer count = Weather.bitSetToInt(data, index, countLabel.size, countLabel.scale, countLabel.referenceValue);
+					Integer count = this.bitSetToInt(data, index, countLabel.size, countLabel.scale, countLabel.referenceValue);
 					index += countLabel.size;
 					arrayIndex += label.x - 1;
-					sbm.append("\t#Iteraciones: " + count);
+					if(Weather.DEBUG_LOG) {
+						sbm.append("\t#Iteraciones: " + count);
+					}
 
-					if (Weather.imagenFlag) {
+					if (this.imagenFlag) {
 						if(Weather.DEBUG_LOG) {
 							Log.d(Weather.class.getSimpleName(),"Multiple :" + countLabel.labelPropKey + " iteracciones:" + count);
 						}
@@ -372,7 +382,7 @@ public class Weather {
 					if(Weather.DEBUG_LOG) {
 						Log.d(Weather.class.getSimpleName(),sbm.toString());
 					}
-					index = Weather.processLabels(index, data, labelSequence, count, level + 1);
+					index = this.processLabels(index, data, labelSequence, count, level + 1);
 				}
 
 			}
@@ -380,18 +390,18 @@ public class Weather {
 		return index;
 	}
 
-	private static void getLabel(final byte b0, final byte b1, final List<Label> labels, final int nTimes) {
+	private void getLabel(final byte b0, final byte b1, final List<Label> labels, final int nTimes) {
 		final Label currentLabel = new Label(new byte[]{b0, b1});
-		Weather.getLabel(currentLabel.type.id, currentLabel.x, currentLabel.y, labels, nTimes);
+		this.getLabel(currentLabel.type.id, currentLabel.x, currentLabel.y, labels, nTimes);
 	}
 
-	private static void getLabel(final int labelType, final int x, final int y, final List<Label> labels, final int nTimes) {
+	private void getLabel(final int labelType, final int x, final int y, final List<Label> labels, final int nTimes) {
 		Label currentLabel = new Label(labelType, x, y);
 		for (int k = 0; k < nTimes; k++) {
 			labels.add(currentLabel);
 
 			if (currentLabel.type == LabelType.SEQUENCE_DESCRIPTOR_TABLE_D) {
-				Weather.getSequenceLabel(currentLabel, labels, 1);
+				this.getSequenceLabel(currentLabel, labels, 1);
 			}
 			// LabelType.MULTIPLE; realmente, representan una estructura, la
 			// repeticion es en tiempo de interpretacion de datos *ver
@@ -399,7 +409,7 @@ public class Weather {
 		}
 	}
 
-	private static void getSequenceLabel(final Label sequenceLabel, final List<Label> labels, final int nTimes) {
+	private void getSequenceLabel(final Label sequenceLabel, final List<Label> labels, final int nTimes) {
 		for (int k = 0; k < nTimes; k++) {
 			if (Weather.props.containsKey(sequenceLabel.labelPropKey)) {
 				final String sequence = Weather.props.getProperty(sequenceLabel.labelPropKey);
@@ -408,7 +418,7 @@ public class Weather {
 					final String[] labelKey = subLabel.split(":")[0].split("\\.");
 					final int instances = subLabel.contains(":") ? Integer.valueOf(subLabel.split(":")[1]) : 1;
 
-					Weather.getLabel(Integer.valueOf(labelKey[0]), Integer.valueOf(labelKey[1]), Integer.valueOf(labelKey[2]), labels, instances);
+					this.getLabel(Integer.valueOf(labelKey[0]), Integer.valueOf(labelKey[1]), Integer.valueOf(labelKey[2]), labels, instances);
 				}
 			} else {
 				Log.e(Weather.class.getSimpleName(),"@@@ NO EXISTE PROPERTY " + sequenceLabel.labelPropKey);
@@ -416,83 +426,83 @@ public class Weather {
 		}
 	}
 
-	private static int int3(final byte[] data) {
+	private int int3(final byte[] data) {
 		return data.length < 3 ? Integer.MIN_VALUE : (((byte) 0x00 & 0xFF) << 24) + ((data[0] & 0xFF) << 16) + ((data[1] & 0xFF) << 8) + ((data[2] & 0xFF) << 0);
 	}
 
-	public static boolean getBit(final byte[] bitSet, final int i) {
+	private boolean getBit(final byte[] bitSet, final int i) {
 		return (bitSet[i / 8] & (1 << (8 - (i % 8) - 1))) != 0;
 	}
 
-	public static boolean isUnknownValue(final byte[] bitSet, final int beginBit, final int offSet) {
+	private boolean isUnknownValue(final byte[] bitSet, final int beginBit, final int offSet) {
 		for (int i = 0; i < offSet; i++) {
-			if (!Weather.getBit(bitSet, beginBit + i)) {
+			if (!this.getBit(bitSet, beginBit + i)) {
 				return false;
 			}
 		}
 		return true;
 	}
 
-	public static int bitSetToInt(final byte[] bitSet, final int beginBit, final int offSet, final int scale, final int referenceValue) {
+	private int bitSetToInt(final byte[] bitSet, final int beginBit, final int offSet, final int scale, final int referenceValue) {
 		int bitInteger = 0;
 		for (int i = 0; i < offSet; i++) {
-			bitInteger += Weather.getBit(bitSet, beginBit + i) ? (1 << (offSet - (i + 1))) : 0;
+			bitInteger += this.getBit(bitSet, beginBit + i) ? (1 << (offSet - (i + 1))) : 0;
 		}
 		bitInteger += referenceValue;
 		return bitInteger / (int)Math.pow(10, scale);//(scale == 0 ? 1 : (scale * 10));
 	}
 
-	public static long bitSetToLong(final byte[] bitSet, final int beginBit, final int offSet, final int scale, final int referenceValue) {
+	private long bitSetToLong(final byte[] bitSet, final int beginBit, final int offSet, final int scale, final int referenceValue) {
 		long bitLong = 0;
 		for (int i = 0; i < offSet; i++) {
-			bitLong += Weather.getBit(bitSet, beginBit + i) ? (1L << (offSet - (i + 1))) : 0L;
+			bitLong += this.getBit(bitSet, beginBit + i) ? (1L << (offSet - (i + 1))) : 0L;
 		}
 		bitLong += referenceValue;
 		return bitLong / (long)Math.pow(10, scale);//(scale == 0 ? 1l : (scale * 10));
 	}
 
-	public static double bitSetToDouble(final byte[] bitSet, final int beginBit, final int offSet, final int scale, final int referenceValue) {
+	private double bitSetToDouble(final byte[] bitSet, final int beginBit, final int offSet, final int scale, final int referenceValue) {
 		double bitLong = 0;
 		for (int i = 0; i < offSet; i++) {
-			bitLong += Weather.getBit(bitSet, beginBit + i) ? (1L << (offSet - (i + 1))) : 0L;
+			bitLong += this.getBit(bitSet, beginBit + i) ? (1L << (offSet - (i + 1))) : 0L;
 		}
 		bitLong += referenceValue;
 		return bitLong / Math.pow(10, scale);//(scale == 0 ? 1 : (scale * 10));
 	}
 
 	@SuppressWarnings("unused")
-	private static String printBitSet(final byte[] bitSet, final int beginBit, final int offSet) {
+	private String printBitSet(final byte[] bitSet, final int beginBit, final int offSet) {
 		StringBuffer sb = new StringBuffer();
 		for (int i = 0; i < offSet; i++) {
-			sb.append((Weather.getBit(bitSet, beginBit + i)) ? "1" : "0");
+			sb.append((this.getBit(bitSet, beginBit + i)) ? "1" : "0");
 		}
 		return sb.toString();
 	}
 
 	@SuppressWarnings("unused")
-	private static String formattedBitSet(final byte[] bitSet) {
+	private String formattedBitSet(final byte[] bitSet) {
 		StringBuffer sb = new StringBuffer();
 		for (int i = 0; i < bitSet.length * 8; i++) {
 			sb.append((i % 8 == 0) ? "\n\t" : "");
-			sb.append((Weather.getBit(bitSet, i)) ? "1" : "0");
+			sb.append((this.getBit(bitSet, i)) ? "1" : "0");
 		}
 		return sb.toString();
 	}
 
-	private static final String HEXES = "0123456789ABCDEF";
+	private final String HEXES = "0123456789ABCDEF";
 
-	private static String getHex(final byte[] raw) {
+	private String getHex(final byte[] raw) {
 		if (raw == null) {
 			return null;
 		}
 		final StringBuilder hex = new StringBuilder(2 * raw.length);
 		for (final byte b : raw) {
-			hex.append(Weather.HEXES.charAt((b & 0xF0) >> 4)).append(Weather.HEXES.charAt((b & 0x0F))).append(" ");
+			hex.append(this.HEXES.charAt((b & 0xF0) >> 4)).append(this.HEXES.charAt((b & 0x0F))).append(" ");
 		}
 		return hex.toString();
 	}
 
-	private static String getChars(final byte[] raw) {
+	private String getChars(final byte[] raw) {
 		StringBuffer sb = new StringBuffer();
 		for (final byte b : raw) {
 			sb.append((char) b);

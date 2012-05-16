@@ -1,7 +1,7 @@
 package com.weather.populate;
 
 
-public enum Class3X01Y192 implements EnumIdInterface {
+public enum Class3X01Y192 implements EnumIdInterface<Integer> {
 
 	YEAR(0, false),
 	MONTH(1, false),
@@ -35,7 +35,7 @@ public enum Class3X01Y192 implements EnumIdInterface {
 	}
 
 	@Override
-	public int getId() {
+	public Integer getId() {
 		return id;
 	}
 
@@ -46,7 +46,7 @@ public enum Class3X01Y192 implements EnumIdInterface {
 
 	public static Class3X01Y192 getById(final int id) {
 		for (Class3X01Y192 type : Class3X01Y192.values()) {
-			if (id == type.getId()) {
+			if (id == type.getId().intValue()) {
 				return type;
 			}
 		}

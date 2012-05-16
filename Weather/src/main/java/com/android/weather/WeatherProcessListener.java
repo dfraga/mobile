@@ -10,8 +10,9 @@ public interface WeatherProcessListener {
 
 	void setPercentageProgression(int partial, int max);
 	void setPercentageMessage(String message);
-	void openImage(Bitmap bitmap, String pngPath, Populator<Class3X01Y192> imageGeneralData);
+	void setProcessedImage(Bitmap bitmap, String pngPath, Populator<Class3X01Y192> imageGeneralData);
 	Context getContext();
 	void processException(Throwable e);
+	void processGetFtpEnded();
 
 }

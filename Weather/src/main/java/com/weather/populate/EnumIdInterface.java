@@ -1,8 +1,8 @@
 package com.weather.populate;
 
-public interface EnumIdInterface {
+public interface EnumIdInterface<K> {
 
-	int getId();
+	K getId();
 	boolean isNoMoreData();
 	String name();
 

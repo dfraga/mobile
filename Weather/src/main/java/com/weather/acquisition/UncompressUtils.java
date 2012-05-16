@@ -25,6 +25,7 @@ public class UncompressUtils {
 		GZIPInputStream in = null;
 		OutputStream out = null;
 		try {
+			targetlocalfile.deleteOnExit();
 			in = new GZIPInputStream(new FileInputStream(localfile));
 			out = new FileOutputStream(targetlocalfile);
 			// Transfer bytes from the compressed file to the output file
@@ -43,6 +44,7 @@ public class UncompressUtils {
 				try {
 					in.close();
 				} catch (IOException ex) {
+					Log.e(UncompressUtils.class.getSimpleName(),"There was a problem while closing input file", ex);
 				}
 			}
 			if (out != null) {
@@ -50,6 +52,7 @@ public class UncompressUtils {
 					out.close();
 					targetlocalfile.deleteOnExit();
 				} catch (IOException ex) {
+					Log.e(UncompressUtils.class.getSimpleName(),"There was a problem while closing output file", ex);
 				}
 			}
 		}

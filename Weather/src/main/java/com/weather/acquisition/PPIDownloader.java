@@ -5,7 +5,6 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.SocketException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -45,8 +44,9 @@ public class PPIDownloader {
 
 	/**
 	 * Get data from observacions AEMET.
+	 * @throws Exception
 	 */
-	public void get(final String radarFilter, final WeatherProcessListener listener) {
+	public void get(final String radarFilter, final WeatherProcessListener listener) throws Exception {
 		final String startStr = "Start: {" + getCurrentUTCFormattedDate() + "}";
 		System.out.println(startStr);
 		//		Log.d(PPIDownloader.class.getSimpleName(),startStr);
@@ -56,9 +56,10 @@ public class PPIDownloader {
 		final String endStr = "End: {" + getCurrentUTCFormattedDate() + "}";
 		System.out.println(endStr);
 		//		Log.d(PPIDownloader.class.getSimpleName(),endStr);
+		listener.processGetFtpEnded();
 	}
 
-	private void handleFiles(final String radarFilter) {
+	private void handleFiles(final String radarFilter) throws Exception {
 
 		try {
 			listener.setPercentageMessage("Recopilando datos...");
@@ -142,16 +143,9 @@ public class PPIDownloader {
 				downloadFile(ftpFile, localFile);
 				listener.setPercentageProgression(4, 5);
 			}
-		} catch (SocketException ex) {
-			Log.e(PPIDownloader.class.getSimpleName(),"",ex);
-		} catch (Exception ex) {
-			Log.e(PPIDownloader.class.getSimpleName(),"",ex);
 		} finally {
 			if (ftpclient != null) {
-				try {
-					ftpclient.disconnect();
-				} catch (IOException ex) {
-				}
+				ftpclient.disconnect();
 			}
 		}
 
@@ -176,7 +170,7 @@ public class PPIDownloader {
 	 * Stores locally the specified FTP file if it has changes or doesn't exists.
 	 * @param ftpfile
 	 * @param localfile
-	 * @throws IOException
+	 * @throws Exception
 	 */
 	private void downloadFile(final FTPFile ftpfile, final File localFile) throws Exception {
 		try {
@@ -188,9 +182,9 @@ public class PPIDownloader {
 			Log.d(PPIDownloader.class.getSimpleName(),"Downloaded finished at '" + getCurrentUTCFormattedDate() + "' , size:'" + ftpfile.getSize() + "'bytes , timestamp: '" + ftpfile.getTimestamp().getTime() + "'.");
 
 			inflate(is, localFile);
-		} catch (Exception ex) {
+		} catch (Throwable ex) {
 			Log.d(PPIDownloader.class.getSimpleName(),"A problem occurs while downloading file '" + ftpfile.getName() ,ex);
-			throw ex;
+			throw (Exception)ex;
 		}
 	}
 
@@ -212,7 +206,7 @@ public class PPIDownloader {
 					if (UncompressUtils.uncompressGzFile(untarFile, unzipFile)) {
 						Log.d(PPIDownloader.class.getSimpleName(),"Unzip file: " + targetName);
 						// procesar imagen radar.
-						Weather.process(unzipFile, listener);
+						new Weather(listener).process(unzipFile);
 					} else {
 						// If there is any error uncompressing file then remove files to
 						// ensure it will be downloaded again.

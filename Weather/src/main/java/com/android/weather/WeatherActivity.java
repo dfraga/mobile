@@ -18,8 +18,13 @@ import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
-import android.widget.Toast;
+import android.widget.ExpandableListView;
+import android.widget.ExpandableListView.OnGroupCollapseListener;
+import android.widget.ExpandableListView.OnGroupExpandListener;
+import android.widget.ListView;
 
+import com.android.utils.ExpandableRadarSelectionAdapter;
+import com.android.utils.ExpandableRadarSelectionListener;
 import com.android.utils.MapOverlay;
 import com.google.android.maps.GeoPoint;
 import com.google.android.maps.MapActivity;
@@ -51,10 +56,10 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 	private String pngPath;
 	private Populator<Class3X01Y192> imageGeneralData;
 
+	private ExpandableListView radarComboList;
 	private MapView mapView;
-	//	private ImageView imageView;
 
-	private final Runnable processErrorAction = new ExceptionActionRunnable() {
+	private final Runnable processResetAction = new ExceptionActionRunnable() {
 		@Override
 		public void run() {
 			resetLayout();
@@ -71,12 +76,6 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 		setContentView(R.layout.main);
 
 		try {
-			//imageView = (ImageView) findViewById(R.id.imageView);
-			mapView = (MapView) findViewById(R.id.mapView);
-			mapView.setBuiltInZoomControls(true);
-			mapView.setStreetView(false);
-			mapView.setTraffic(false);
-			mapView.setSatellite(true);
 
 			applyButton = (Button) findViewById(R.id.execute);
 			applyButton.setEnabled(true);
@@ -88,6 +87,42 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 				}
 			});
 
+
+			radarComboList = (ExpandableListView)findViewById(R.id.radarComboList);
+			radarComboList.setItemsCanFocus(false);
+			radarComboList.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
+
+
+			final ExpandableRadarSelectionListener listener = new ExpandableRadarSelectionListener() {
+				@Override
+				public void itemSelected(final RadarCenter selectedRadar) {
+					setSelectedRadar(selectedRadar);
+					setMapRadarCenter();
+				}
+			};
+			new ExpandableRadarSelectionAdapter(radarComboList, listener);
+			radarComboList.setOnGroupExpandListener(new OnGroupExpandListener() {
+
+				@Override
+				public void onGroupExpand(final int groupPosition) {
+					applyButton.setVisibility(View.INVISIBLE);
+				}
+			});
+			radarComboList.setOnGroupCollapseListener(new OnGroupCollapseListener() {
+
+				@Override
+				public void onGroupCollapse(final int groupPosition) {
+					applyButton.setVisibility(View.VISIBLE);
+				}
+			});
+
+
+			mapView = (MapView) findViewById(R.id.mapView);
+			mapView.setBuiltInZoomControls(true);
+			mapView.setStreetView(false);
+			mapView.setTraffic(false);
+			mapView.setSatellite(true);
+
 			WeatherActivity.progressDialog = new ProgressDialog(
 					WeatherActivity.this.applyButton.getContext());
 			WeatherActivity.progressDialog
@@ -98,22 +133,47 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 			processing.set(false);
 			WeatherActivity.progress = 0;
 
-			//Obtenemos ultima posicion conocida para centrar el mapa
-			LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-			String locationProvider = LocationManager.NETWORK_PROVIDER;
-			Location lastKnownLocation = locationManager.getLastKnownLocation(locationProvider);
 
-			//TODO obetener centro por defecto de configuracion
-			final GeoPoint center = lastKnownLocation == null ?
-					getGeoPoint(43.16909, -8.52684):
-						getGeoPoint(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
-					centerMap(center);
-					mapView.invalidate();
+			setMapRadarCenter();
 		} catch (final Exception e) {
 			// No compatible file manager.
 			processException(e);
 		}
 
+	}
+
+	public void setMapRadarCenter() {
+		//Obtenemos ultima posicion conocida para centrar el mapa
+		LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+		String locationProvider = LocationManager.NETWORK_PROVIDER;
+		Location lastKnownLocation = locationManager.getLastKnownLocation(locationProvider);
+
+		// obetener centro por defecto del seleccionado
+		final GeoPoint center = (lastKnownLocation == null ?
+				getGeoPoint(this.selectedRadar.getLatitude(), this.selectedRadar.getLongitude()):
+					getGeoPoint(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude()));
+
+		centerMap(center);
+		RadarCenter nearest = null;
+		double nearestDistance = Double.MAX_VALUE;
+		for(RadarCenter radar:RadarCenter.values()) {
+			GeoPoint currentGeo = getGeoPoint(radar.getLatitude(), radar.getLongitude());
+			double distance = getFakeDistance(currentGeo, center);
+			if(distance < nearestDistance) {
+				nearest = radar;
+				nearestDistance = distance;
+			}
+		}
+		this.selectedRadar = nearest;
+		mapView.invalidate();
+	}
+
+	private double getFakeDistance(final GeoPoint currentGeo, final GeoPoint center) {
+		if(currentGeo == null || center == null) {
+			return Double.MAX_VALUE;
+		}
+		return Math.pow((currentGeo.getLatitudeE6() - center.getLatitudeE6()), 2)
+				+ Math.pow((currentGeo.getLongitudeE6() - center.getLongitudeE6()),2);
 	}
 
 	private void centerMap(final GeoPoint center) {
@@ -135,6 +195,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 			WeatherActivity.progress = 0;
 
 			WeatherActivity.progressDialog.setMax(100);
+			//XXX
 			WeatherActivity.progressDialog.show();
 		}
 
@@ -155,25 +216,21 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 
 		@Override
 		public void run() {
-			//imageView.setImageBitmap(imBitmap);
-
-			//			Toast.makeText(WeatherActivity.this, "Photo processing finished.",
-			//					Toast.LENGTH_LONG).show();
 			resetLayout();
 
-			/* XXX registrar android:apiKey para mapa de google (main.xml) */
-			final GeoPoint center = getGeoPoint(Class3X01Y192.RADAR_LATITUDE, Class3X01Y192.RADAR_LONGITUDE);
-			centerMap(center);
+			if(imageGeneralData != null) {
+				final GeoPoint center = getGeoPoint(Class3X01Y192.RADAR_LATITUDE, Class3X01Y192.RADAR_LONGITUDE);
+				centerMap(center);
 
 
-			List<Overlay> overlays = mapView.getOverlays();
-			overlays.clear();
+				List<Overlay> overlays = mapView.getOverlays();
+				overlays.clear();
 
-			MapOverlay mapOverlay = new MapOverlay(center, imBitmap,
-					getGeoPoint(Class3X01Y192.LATITUDE_NW, Class3X01Y192.LONGITUDE_NW),
-					getGeoPoint(Class3X01Y192.LATITUDE_SE, Class3X01Y192.LONGITUDE_SE));
-			overlays.add(mapOverlay);
-
+				MapOverlay mapOverlay = new MapOverlay(center, imBitmap,
+						getGeoPoint(Class3X01Y192.LATITUDE_NW, Class3X01Y192.LONGITUDE_NW),
+						getGeoPoint(Class3X01Y192.LATITUDE_SE, Class3X01Y192.LONGITUDE_SE));
+				overlays.add(mapOverlay);
+			}
 			mapView.invalidate();
 
 		}
@@ -193,10 +250,14 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 		processing.set(false);
 		lastProgressUpdate = -1;
 
-		applyButton.setVisibility(View.VISIBLE);
-		applyButton.setEnabled(true);
+		if(applyButton != null) {
+			applyButton.setVisibility(View.VISIBLE);
+			applyButton.setEnabled(true);
+		}
 
-		WeatherActivity.progressDialog.hide();
+		if(WeatherActivity.progressDialog != null) {
+			WeatherActivity.progressDialog.hide();
+		}
 	}
 
 	private class ExceptionActionRunnable implements Runnable {
@@ -212,6 +273,11 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 		}
 	};
 
+	private RadarCenter selectedRadar = RadarCenter.MADRID;
+	public void setSelectedRadar(final RadarCenter selectedRadar) {
+		this.selectedRadar = selectedRadar == null ? this.selectedRadar : selectedRadar;
+	}
+
 	private void applyFilter() {
 		// Toast.makeText(WeatherActivity.this, "applyFilter 1",
 		// Toast.LENGTH_SHORT).show();
@@ -221,14 +287,16 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 			try {
 				// processing = true;
 				progressThreadHandler.post(processBeginAction);
-				final Thread processT = new MainProcess(this,
+				final Thread processT = new MainProcess(
+						this.selectedRadar,
+						this,
 						progressThreadHandler);
 				processT.start();
 
 			} catch (final Exception e) {
 				processException(e);
 			} finally {
-				// progressThreadHandler.post(processEndAction);
+				//progressThreadHandler.post(processEndAction);
 			}
 		}
 	}
@@ -246,10 +314,15 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 		final String error = WeatherActivity.getStackTrace(("Error: " + e
 				+ " - " + e.getMessage()), e);
 		Log.e("error", error);
-		Toast.makeText(WeatherActivity.this, error, Toast.LENGTH_SHORT).show();
+		//Toast.makeText(WeatherActivity.this, error, Toast.LENGTH_SHORT).show();
 
-		((ExceptionActionRunnable) processErrorAction).setException((Exception) e);
-		progressThreadHandler.post(processErrorAction);
+		((ExceptionActionRunnable) processResetAction).setException((Exception) e);
+		progressThreadHandler.post(processResetAction);
+	}
+
+	@Override
+	public void processGetFtpEnded() {
+		progressThreadHandler.post(processResetAction);
 	}
 
 	@Override
@@ -268,7 +341,8 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 				Log.e("set progress", "error asignando valor", e);
 			}
 
-			if (WeatherActivity.progress - lastProgressUpdate > 5) {
+			if ( (WeatherActivity.progress - lastProgressUpdate > 5)
+					|| (lastProgressUpdate > 0 && WeatherActivity.progress < lastProgressUpdate) ) {
 				lastProgressUpdate = WeatherActivity.progress;
 				progressThreadHandler.post(WeatherActivity.progressThread);
 			}
@@ -278,7 +352,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 	}
 
 	@Override
-	public void openImage(final Bitmap tempBitmap, final String pngPath,
+	public void setProcessedImage(final Bitmap tempBitmap, final String pngPath,
 			final Populator<Class3X01Y192> imageGeneralData) {
 
 		imBitmap = tempBitmap;
