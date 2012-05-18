@@ -70,7 +70,7 @@ public class PPIDownloader {
 			ftpclient.connect(PPIDownloader.server);
 			ftpclient.setFileTransferMode(FTP.BINARY_FILE_TYPE);
 			ftpclient.enterLocalPassiveMode();
-			ftpclient.setConnectTimeout(30000);
+			//ftpclient.setConnectTimeout(30000);
 
 			// Loggin
 			if (!ftpclient.login("anonymous", null)) {
@@ -119,29 +119,36 @@ public class PPIDownloader {
 			listener.setPercentageProgression(3, 5);
 			boolean mustBeRead = false;
 			FTPFile ftpFile = PPIDownloader.lastFileModified(files, radarFilter);
-			File localFile = null;
 			if(ftpFile != null) {
-				long size = ftpFile.getSize();
-				localFile = new File(folderDay, ftpFile.getName());
-				localFile.deleteOnExit();
+				String ftpFileName = ftpFile.getName();
+				long ftpFileSize = ftpFile.getSize();
 
-				//TODO cambiar comprobacion, pues estos ficheros se borran tras la descarga
-				if (!localFile.exists()) {
+				LRUFtpFiles lru = LRUFtpFiles.getInstance();
+				if (!lru.containsKey(ftpFileName)) {
 					Log.d(PPIDownloader.class.getSimpleName(),"File '" + ftpFile.getName() + "' doesn't exist locally");
 					mustBeRead = true;
-				} else if (Math.abs(localFile.length() - size) > 1) {
-					Log.d(PPIDownloader.class.getSimpleName(),"File '" + ftpFile.getName() + "' size changed (before: " + localFile.length() + ", after: " + size + ")");
-					mustBeRead = true;
 				} else {
-					Log.d(PPIDownloader.class.getSimpleName(),"Ignored file '" + ftpFile.getName() + "'");
+					long lruTarSize = lru.get(ftpFileName).getDownloadTarFileSize();
+					if (Math.abs(lruTarSize - ftpFileSize) > 1) {
+						Log.d(PPIDownloader.class.getSimpleName(),"File '" + ftpFile.getName() + "' size changed (before: " + lruTarSize + ", after: " + ftpFileSize + ")");
+						mustBeRead = true;
+					} else {
+						Log.d(PPIDownloader.class.getSimpleName(),"Ignored file '" + ftpFile.getName() + "'");
+					}
 				}
-			}
 
-			listener.setPercentageProgression(3, 5);
-			// If we need to read the file then control if any error occurs.
-			if (mustBeRead) {
-				downloadFile(ftpFile, localFile);
-				listener.setPercentageProgression(4, 5);
+				listener.setPercentageProgression(3, 5);
+				// If we need to read the file then control if any error occurs.
+				if (mustBeRead) {
+					listener.setDownloadTarFile(ftpFileName, ftpFileSize);
+					File localFile = new File(folderDay, ftpFileName);
+					localFile.deleteOnExit();
+					downloadFile(ftpFile, localFile);
+					listener.setPercentageProgression(4, 5);
+				} else {
+					listener.setDownloadTarFile(ftpFileName, lru.get(ftpFileName).getDownloadTarFileSize());
+					listener.setProcessedImage(lru.get(ftpFileName).getImBitmap(), lru.get(ftpFileName).getImageGeneralData());
+				}
 			}
 
 		} finally {
@@ -156,6 +163,7 @@ public class PPIDownloader {
 	}
 
 	public static FTPFile lastFileModified(final FTPFile[] files, final String containsFilter) {
+		//FIXME a veces modifican archivos antiguos para comprimir las lecturas de una hora en un solo fichero (dos dias anteriores por ejemplo). Esto hace que el ultimo modificado no siempre sea el ultimo barrido del radar.
 		Date lastMod = files[0].getTimestamp().getTime();
 		FTPFile choice = null;
 		for (FTPFile file : files) {

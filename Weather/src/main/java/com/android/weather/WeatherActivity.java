@@ -31,6 +31,8 @@ import com.google.android.maps.MapActivity;
 import com.google.android.maps.MapController;
 import com.google.android.maps.MapView;
 import com.google.android.maps.Overlay;
+import com.weather.acquisition.LRUFtpFiles;
+import com.weather.acquisition.MapOverlayImageInfo;
 import com.weather.populate.Class3X01Y192;
 import com.weather.populate.Populator;
 
@@ -47,17 +49,18 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 	}
 
 	private Button applyButton;
-	private static ProgressDialog progressDialog;
+	private ProgressDialog progressDialog;
 
 	private final AtomicBoolean processing = new AtomicBoolean(false);
-	private static int progress = 0;
-	private static String message = "";
+	private int progress = 0;
+	private String message = "";
 	private Bitmap imBitmap;
-	private String pngPath;
+	private String downloadTarFileName;
+	private long downloadTarFileSize;
 	private Populator<Class3X01Y192> imageGeneralData;
 
-	private ExpandableListView radarComboList;
 	private MapView mapView;
+	private ExpandableRadarSelectionAdapter mapAdapter;
 
 	private final Runnable processResetAction = new ExceptionActionRunnable() {
 		@Override
@@ -87,11 +90,9 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 				}
 			});
 
-
-			radarComboList = (ExpandableListView)findViewById(R.id.radarComboList);
+			final ExpandableListView radarComboList = (ExpandableListView)findViewById(R.id.radarComboList);
 			radarComboList.setItemsCanFocus(false);
 			radarComboList.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
-
 
 			final ExpandableRadarSelectionListener listener = new ExpandableRadarSelectionListener() {
 				@Override
@@ -100,7 +101,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 					setMapRadarCenter();
 				}
 			};
-			new ExpandableRadarSelectionAdapter(radarComboList, listener);
+			mapAdapter = new ExpandableRadarSelectionAdapter(radarComboList, listener);
 			radarComboList.setOnGroupExpandListener(new OnGroupExpandListener() {
 
 				@Override
@@ -116,25 +117,24 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 				}
 			});
 
-
 			mapView = (MapView) findViewById(R.id.mapView);
 			mapView.setBuiltInZoomControls(true);
 			mapView.setStreetView(false);
 			mapView.setTraffic(false);
 			mapView.setSatellite(true);
 
-			WeatherActivity.progressDialog = new ProgressDialog(
-					WeatherActivity.this.applyButton.getContext());
-			WeatherActivity.progressDialog
-			.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-			WeatherActivity.progressDialog.setCancelable(false);
-			WeatherActivity.progressDialog.setMessage("Comprobando datos.");
+			progressDialog = new ProgressDialog(WeatherActivity.this.applyButton.getContext());
+			progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+			progressDialog.setCancelable(false);
+			progressDialog.setMessage("Comprobando datos.");
 
 			processing.set(false);
-			WeatherActivity.progress = 0;
-
+			progress = 0;
 
 			setMapRadarCenter();
+
+			//Carga de lru
+			LRUFtpFiles.getInstance();
 		} catch (final Exception e) {
 			// No compatible file manager.
 			processException(e);
@@ -165,6 +165,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 			}
 		}
 		this.selectedRadar = nearest;
+		mapAdapter.setSelected(this.selectedRadar, false);
 		mapView.invalidate();
 	}
 
@@ -187,27 +188,22 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 
 		@Override
 		public void run() {
-			// Toast.makeText(PhotoColorSwitcherActivity.this,
-			// "processBeginAction", Toast.LENGTH_SHORT).show();
-
 			applyButton.setEnabled(false);
 			applyButton.setVisibility(View.INVISIBLE);
-			WeatherActivity.progress = 0;
+			progress = 0;
 
-			WeatherActivity.progressDialog.setMax(100);
-			//XXX
-			WeatherActivity.progressDialog.show();
+			progressDialog.setMax(100);
+			progressDialog.show();
 		}
 
 	};
 
-	private final static Runnable progressThread = new Runnable() {
+	private final Runnable progressThread = new Runnable() {
 
 		@Override
 		public synchronized void run() {
-			WeatherActivity.progressDialog.setMessage(WeatherActivity.message);
-			WeatherActivity.progressDialog
-			.setProgress(WeatherActivity.progress);
+			progressDialog.setMessage(message);
+			progressDialog.setProgress(progress);
 		}
 
 	};
@@ -221,7 +217,6 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 			if(imageGeneralData != null) {
 				final GeoPoint center = getGeoPoint(Class3X01Y192.RADAR_LATITUDE, Class3X01Y192.RADAR_LONGITUDE);
 				centerMap(center);
-
 
 				List<Overlay> overlays = mapView.getOverlays();
 				overlays.clear();
@@ -255,8 +250,8 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 			applyButton.setEnabled(true);
 		}
 
-		if(WeatherActivity.progressDialog != null) {
-			WeatherActivity.progressDialog.hide();
+		if(progressDialog != null) {
+			progressDialog.hide();
 		}
 	}
 
@@ -279,11 +274,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 	}
 
 	private void applyFilter() {
-		// Toast.makeText(WeatherActivity.this, "applyFilter 1",
-		// Toast.LENGTH_SHORT).show();
 		if (!processing.getAndSet(true)) {
-			// Toast.makeText(WeatherActivity.this, "applyFilter 2",
-			// Toast.LENGTH_SHORT).show();
 			try {
 				// processing = true;
 				progressThreadHandler.post(processBeginAction);
@@ -295,8 +286,6 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 
 			} catch (final Exception e) {
 				processException(e);
-			} finally {
-				//progressThreadHandler.post(processEndAction);
 			}
 		}
 	}
@@ -314,7 +303,6 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 		final String error = WeatherActivity.getStackTrace(("Error: " + e
 				+ " - " + e.getMessage()), e);
 		Log.e("error", error);
-		//Toast.makeText(WeatherActivity.this, error, Toast.LENGTH_SHORT).show();
 
 		((ExceptionActionRunnable) processResetAction).setException((Exception) e);
 		progressThreadHandler.post(processResetAction);
@@ -327,39 +315,49 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 
 	@Override
 	public void setPercentageMessage(final String message) {
-		WeatherActivity.message = message;
+		this.message = message;
 		lastProgressUpdate = -1;
-		progressThreadHandler.post(WeatherActivity.progressThread);
+		progressThreadHandler.post(progressThread);
 	}
 
 	@Override
 	public void setPercentageProgression(final int partial, final int maxTotal) {
 		if (maxTotal > 0) {
 			try {
-				WeatherActivity.progress = (int) (((double) partial / (double) maxTotal) * 99);
+				progress = (int) (((double) partial / (double) maxTotal) * 99);
 			} catch (Exception e) {
 				Log.e("set progress", "error asignando valor", e);
 			}
 
-			if ( (WeatherActivity.progress - lastProgressUpdate > 5)
-					|| (lastProgressUpdate > 0 && WeatherActivity.progress < lastProgressUpdate) ) {
-				lastProgressUpdate = WeatherActivity.progress;
-				progressThreadHandler.post(WeatherActivity.progressThread);
+			if ( (progress - lastProgressUpdate > 5)
+					|| (lastProgressUpdate > 0 && progress < lastProgressUpdate) ) {
+				lastProgressUpdate = progress;
+				progressThreadHandler.post(progressThread);
 			}
 		} else {
-			WeatherActivity.progress = 0;
+			progress = 0;
 		}
 	}
 
 	@Override
-	public void setProcessedImage(final Bitmap tempBitmap, final String pngPath,
+	public void setDownloadTarFile(final String downloadTarFileName, final long downloadTarFileSize) {
+		this.downloadTarFileName = downloadTarFileName;
+		this.downloadTarFileSize = downloadTarFileSize;
+	}
+
+	@Override
+	public void setProcessedImage(final Bitmap tempBitmap,
 			final Populator<Class3X01Y192> imageGeneralData) {
 
 		imBitmap = tempBitmap;
 		imBitmap.prepareToDraw();
 
-		this.pngPath = pngPath;
 		this.imageGeneralData = imageGeneralData;
+
+		//mapear en las ultimas y persistir
+		final MapOverlayImageInfo lastImage = new MapOverlayImageInfo(tempBitmap, downloadTarFileSize, imageGeneralData);
+		LRUFtpFiles.getInstance().put(downloadTarFileName, lastImage);
+		LRUFtpFiles.getInstance().serialize();
 
 		progressThreadHandler.post(processEndAction);
 

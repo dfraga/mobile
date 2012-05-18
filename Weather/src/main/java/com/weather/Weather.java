@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.io.OutputStreamWriter;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -187,29 +186,30 @@ public class Weather {
 							sb.append("\n\t Interpretados:" + index + " Bits = " + ((index / 8) + (index % 8 == 0 ? 0 : 1)) + " BYTES ### Data[" + data.length + "]:\t").append(this.getHex(data));
 						}
 					} else if (bufrSection == SectionType.END_SECTION.getId()) {
+						File outPng = null;
 						try {
-							//							BMP bmp = new BMP();
-							//							bmp.saveBMP("Salida/" + fileName + ".bmp", this.imagen);
-
-							/* TODO almacenar o aprovechar decentemente los datos de this.imageGeneralData (estructura serializada que incluya la imagen y sus datos)*/
 							File ruta_sd = Environment.getExternalStorageDirectory();
 							File localFolder = new File(ruta_sd.getAbsolutePath(), Weather.WORKING_DIRECTORY);
 
-							(new OutputStreamWriter(new FileOutputStream(new File(localFolder, fileName + ".txt")))).append(fileName).append("\n").append(this.imageGeneralData.toString()).close();
+							//							(new OutputStreamWriter(new FileOutputStream(new File(localFolder, fileName + ".txt")))).append(fileName).append("\n").append(this.imageGeneralData.toString()).close();
 
 							if(Weather.DEBUG_LOG) {
 								Log.d("Resultado","resultado de imagen:" + this.bitMap.getWidth() + "*" + this.bitMap.getHeight());
 							}
-							//Toast.makeText(listener.getContext(), "Save file: " + fileName+".png", Toast.LENGTH_LONG).show();
-							File outPng = new File(localFolder, fileName+".png");
+							outPng = new File(localFolder, fileName+".png");
+							outPng.deleteOnExit();
 							FileOutputStream out = new FileOutputStream(outPng);
 							this.bitMap.compress(Bitmap.CompressFormat.PNG, 90, out);
 							out.flush();
 							out.close();
 
-							listener.setProcessedImage(this.bitMap, outPng.getAbsolutePath(), this.imageGeneralData);
+							listener.setProcessedImage(this.bitMap, this.imageGeneralData);
 						} catch (Throwable e) {
 							listener.processException(e);
+						} finally {
+							if(outPng!= null && outPng.exists()) {
+								outPng.delete();
+							}
 						}
 					}
 				} else {
@@ -269,7 +269,7 @@ public class Weather {
 					this.imagenFlag = true;
 					this.totalPixels = this.columns * this.rows;
 
-					this.listener.setPercentageMessage("Procesando imagen...");
+					this.listener.setPercentageMessage("Decodificando imagen...");
 				}
 				if (label.labelPropKey.equals("3.1.192")) {
 					/* clase para datos de fecha /latitud / longitud.... */

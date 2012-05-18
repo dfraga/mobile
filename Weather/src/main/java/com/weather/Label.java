@@ -1,10 +1,13 @@
 package com.weather;
 
+import java.io.Serializable;
+
 import android.util.Log;
 
 
-public class Label {
+public class Label implements Serializable {
 
+	private static final long serialVersionUID = -1961063111425471633L;
 	final LabelType type;
 	final int x;
 	final int y;

@@ -13,6 +13,8 @@ import com.android.weather.RadarCenter;
 
 public class ExpandableRadarSelectionAdapter extends BaseExpandableListAdapter {
 
+	private final ExpandableRadarSelectionListener listener;
+	private final ExpandableListView radarComboList;
 	private final String[] groups;
 	private final RadarCenter[][] children;
 	private final Context context;
@@ -20,6 +22,8 @@ public class ExpandableRadarSelectionAdapter extends BaseExpandableListAdapter {
 	public ExpandableRadarSelectionAdapter(final ExpandableListView radarComboList,
 			final ExpandableRadarSelectionListener listener) {
 		this.context = radarComboList.getContext();
+		this.listener = listener;
+		this.radarComboList = radarComboList;
 
 		String[] nodeIds = new String[RadarCenter.values().length];
 		int i = 0;
@@ -38,11 +42,7 @@ public class ExpandableRadarSelectionAdapter extends BaseExpandableListAdapter {
 			@Override
 			public boolean onChildClick(final ExpandableListView parent,
 					final View v, final int groupPosition, final int childPosition, final long id) {
-				final RadarCenter radarKey = (RadarCenter) getChild(groupPosition, childPosition);
-				listener.itemSelected(radarKey);
-				ExpandableRadarSelectionAdapter.this.groups[0] = radarKey.toString();
-				radarComboList.collapseGroup(groupPosition);
-				return true;
+				return selectChild(groupPosition, childPosition, id, true);
 			}
 		});
 
@@ -117,6 +117,29 @@ public class ExpandableRadarSelectionAdapter extends BaseExpandableListAdapter {
 
 	@Override
 	public boolean hasStableIds() {
+		return true;
+	}
+
+
+	public void setSelected(final RadarCenter selectedRadar, final boolean notifyListener) {
+		for (int i = 0; i < groups.length; i++) {
+			for (int j = 0; j < this.children[i].length; j++) {
+				RadarCenter current = children[i][j];
+				if(current.getId().equals(selectedRadar.getId())) {
+					selectChild(i, j, getChildId(i,j), notifyListener);
+					return;
+				}
+			}
+		}
+	}
+
+	private boolean selectChild(final int groupPosition, final int childPosition, final long id, final boolean notifyListener) {
+		final RadarCenter radarKey = (RadarCenter) getChild(groupPosition, childPosition);
+		if(notifyListener) {
+			listener.itemSelected(radarKey);
+		}
+		this.groups[groupPosition] = radarKey.toString();
+		radarComboList.collapseGroup(groupPosition);
 		return true;
 	}
 

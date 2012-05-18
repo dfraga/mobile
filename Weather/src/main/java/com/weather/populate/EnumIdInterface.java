@@ -1,6 +1,8 @@
 package com.weather.populate;
 
-public interface EnumIdInterface<K> {
+import java.io.Serializable;
+
+public interface EnumIdInterface<K> extends Serializable {
 
 	K getId();
 	boolean isNoMoreData();

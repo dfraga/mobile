@@ -26,6 +26,7 @@ public enum Class3X01Y192 implements EnumIdInterface<Integer> {
 
 	NO_MORE_DATA(-1, true);
 
+
 	final int id;
 	final boolean noMoreData;
 

@@ -1,10 +1,13 @@
 package com.weather.populate;
 
+import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class Populator<C extends Enum<C> & EnumIdInterface> {
+@SuppressWarnings("rawtypes")
+public class Populator<C extends Enum<C> & EnumIdInterface> implements Serializable {
 
+	private static final long serialVersionUID = -1454022183235134058L;
 	private final Map<C, LabelData> populatorData = new LinkedHashMap<C, LabelData>();
 	private C lastOffer = null;
 

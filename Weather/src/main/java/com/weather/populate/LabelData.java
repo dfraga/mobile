@@ -1,9 +1,12 @@
 package com.weather.populate;
 
+import java.io.Serializable;
+
 import com.weather.Label;
 
-public class LabelData {
+public class LabelData implements Serializable {
 
+	private static final long serialVersionUID = -8031635002548543310L;
 	private final Label label;
 	private final Number data;
 
