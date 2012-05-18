@@ -60,7 +60,7 @@ public class PPIDownloader {
 	}
 
 	private void handleFiles(final String radarFilter) throws Exception {
-
+		File folderDay = null;
 		try {
 			listener.setPercentageMessage("Recopilando datos...");
 			ftpclient = new FTPClient();
@@ -97,7 +97,7 @@ public class PPIDownloader {
 			}
 
 			// Create local directory for the day.
-			File folderDay = new File(this.localFolder, dayFolderName);
+			folderDay = new File(this.localFolder, dayFolderName);
 			folderDay.deleteOnExit();
 			if (!folderDay.exists()) {
 				if (!folderDay.mkdir()) {
@@ -143,7 +143,11 @@ public class PPIDownloader {
 				downloadFile(ftpFile, localFile);
 				listener.setPercentageProgression(4, 5);
 			}
+
 		} finally {
+			if (folderDay != null && folderDay.exists()) {
+				folderDay.delete();
+			}
 			if (ftpclient != null) {
 				ftpclient.disconnect();
 			}
@@ -206,7 +210,11 @@ public class PPIDownloader {
 					if (UncompressUtils.uncompressGzFile(untarFile, unzipFile)) {
 						Log.d(PPIDownloader.class.getSimpleName(),"Unzip file: " + targetName);
 						// procesar imagen radar.
-						new Weather(listener).process(unzipFile);
+						try {
+							new Weather(listener).process(unzipFile);
+						} finally {
+							unzipFile.delete();
+						}
 					} else {
 						// If there is any error uncompressing file then remove files to
 						// ensure it will be downloaded again.
