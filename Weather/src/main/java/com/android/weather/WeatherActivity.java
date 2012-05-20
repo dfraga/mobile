@@ -15,12 +15,15 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.ExpandableListView;
 import android.widget.ExpandableListView.OnGroupCollapseListener;
 import android.widget.ExpandableListView.OnGroupExpandListener;
+import android.widget.ImageView;
 import android.widget.ListView;
 
 import com.android.utils.ExpandableRadarSelectionAdapter;
@@ -38,6 +41,8 @@ import com.weather.populate.Populator;
 
 public class WeatherActivity extends MapActivity implements WeatherProcessListener {
 
+	private boolean blockingProcessDialog = false;
+	private boolean showScale = false;
 	{
 		Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler() {
 
@@ -49,6 +54,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 	}
 
 	private Button applyButton;
+	private ImageView gradImage;
 	private ProgressDialog progressDialog;
 
 	private final AtomicBoolean processing = new AtomicBoolean(false);
@@ -61,6 +67,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 
 	private MapView mapView;
 	private ExpandableRadarSelectionAdapter mapAdapter;
+	private RadarCenter selectedRadar = RadarCenter.MADRID;
 
 	private final Runnable processResetAction = new ExceptionActionRunnable() {
 		@Override
@@ -79,6 +86,14 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 		setContentView(R.layout.main);
 
 		try {
+			gradImage = (ImageView) findViewById(R.id.gradImage);
+			gradImage.setVisibility(showScale ? View.VISIBLE:View.GONE);
+			gradImage.setOnClickListener(new OnClickListener() {
+				@Override
+				public void onClick(final View v) {
+					gradImage.setVisibility(View.GONE);
+				}
+			});
 
 			applyButton = (Button) findViewById(R.id.execute);
 			applyButton.setEnabled(true);
@@ -193,7 +208,9 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 			progress = 0;
 
 			progressDialog.setMax(100);
-			progressDialog.show();
+			if(blockingProcessDialog) {
+				progressDialog.show();
+			}
 		}
 
 	};
@@ -248,6 +265,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 		if(applyButton != null) {
 			applyButton.setVisibility(View.VISIBLE);
 			applyButton.setEnabled(true);
+			gradImage.setVisibility(showScale ? View.VISIBLE:View.GONE);
 		}
 
 		if(progressDialog != null) {
@@ -268,7 +286,6 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 		}
 	};
 
-	private RadarCenter selectedRadar = RadarCenter.MADRID;
 	public void setSelectedRadar(final RadarCenter selectedRadar) {
 		this.selectedRadar = selectedRadar == null ? this.selectedRadar : selectedRadar;
 	}
@@ -316,7 +333,8 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 	@Override
 	public void setPercentageMessage(final String message) {
 		this.message = message;
-		lastProgressUpdate = -1;
+		lastProgressUpdate = 0;
+		progress = 0;
 		progressThreadHandler.post(progressThread);
 	}
 
@@ -357,7 +375,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 		//mapear en las ultimas y persistir
 		final MapOverlayImageInfo lastImage = new MapOverlayImageInfo(tempBitmap, downloadTarFileSize, imageGeneralData);
 		LRUFtpFiles.getInstance().put(downloadTarFileName, lastImage);
-		LRUFtpFiles.getInstance().serialize();
+		//LRUFtpFiles.getInstance().serialize();
 
 		progressThreadHandler.post(processEndAction);
 
@@ -372,6 +390,53 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 	protected boolean isRouteDisplayed() {
 		// Definir si se usa informacion de rutas
 		return false;
+	}
+
+
+
+
+	/* Set ID's */
+	private final int MENU_QUIT = 0;
+	private final int MENU_SHOW_PROCESS = 1;
+	private final int MENU_SHOW_SCALE = 2;
+
+	/* Create Menu Items */
+	@Override
+	public boolean onCreateOptionsMenu(final Menu menu) {
+		menu.add(0, MENU_SHOW_PROCESS, 0, getBlockingProgresMenuStr());
+		menu.add(0, MENU_SHOW_SCALE, 0, getShowScaleMenuStr());
+		menu.add(0, MENU_QUIT, 0, "Salir");
+		return true;
+	}
+
+	/* Handles Item Selection */
+	@Override
+	public boolean onOptionsItemSelected(final MenuItem item) {
+		switch (item.getItemId()) {
+		case MENU_SHOW_PROCESS:
+			blockingProcessDialog = !blockingProcessDialog;
+			item.setTitle(getBlockingProgresMenuStr());
+			return true;
+
+		case MENU_SHOW_SCALE:
+			showScale = !showScale;
+			gradImage.setVisibility(showScale ? View.VISIBLE:View.GONE);
+			item.setTitle(getShowScaleMenuStr());
+			return true;
+
+		case MENU_QUIT:
+			finish();
+			return true;
+		}
+		return false;
+	}
+
+
+	private String getBlockingProgresMenuStr() {
+		return blockingProcessDialog ? "Ocultar progreso" : "Ver progreso";
+	}
+	private String getShowScaleMenuStr() {
+		return showScale ? "Ocultar escala" : "Ver escala";
 	}
 
 }

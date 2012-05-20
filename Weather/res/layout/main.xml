@@ -3,9 +3,9 @@
     android:orientation="vertical" android:layout_width="fill_parent" android:layout_height="fill_parent"
     android:weightSum="1">
 
-    	<LinearLayout
+    <LinearLayout
 	    xmlns:android="http://schemas.android.com/apk/res/android"
-	    android:layout_width="wrap_content"
+	    android:layout_width="fill_parent"
 	    android:layout_height="wrap_content"
 	    android:layout_gravity="top"
 	    android:layout_margin="0dp"
@@ -28,29 +28,36 @@
 
 	</LinearLayout>
 
-	<com.google.android.maps.MapView
-	    xmlns:android="http://schemas.android.com/apk/res/android"
-	    android:id="@+id/mapView"
-	    android:layout_width="fill_parent"
-	    android:layout_height="fill_parent"
-	    android:clickable="true"
-        android:apiKey="00QztEBgmSrZ93z9NaX6nlDLlK-EdcWchbTLwaw"
-	/>
-
-	<!-- 
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:orientation="vertical"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        >
+            <ImageView
+                android:id="@+id/gradImage"
+                android:src="@drawable/grad"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:saveEnabled="false"
+                android:adjustViewBounds="true"
+                android:scaleType="centerInside"
+                android:contentDescription="@string/grad"
+            />
+    </LinearLayout>
+    
+    
+    <!-- 
           debug: android:apiKey="00QztEBgmSrZ93z9NaX6nlDLlK-EdcWchbTLwaw"
           dfraga: android:apiKey="00QztEBgmSraMDHUcL1BN0vaudJu05BQ-LXExbQ"
-	 -->
-
-    <!--LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-        android:orientation="horizontal"
-        android:layout_width="wrap_content"
-        android:layout_height="80dp"
-        >
-	    <ImageView android:id="@+id/imageView"
-	        android:layout_width="wrap_content"
-	        android:layout_height="wrap_content"
-	        />
-    </LinearLayout-->
+     -->
+    <com.google.android.maps.MapView
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/mapView"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:clickable="true"
+        android:apiKey="00QztEBgmSrZ93z9NaX6nlDLlK-EdcWchbTLwaw"
+    />
 
 </LinearLayout>

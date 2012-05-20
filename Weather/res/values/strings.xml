@@ -2,4 +2,5 @@
 <resources>
     <string name="app_name">Weather</string>
     <string name="execute">Barrido</string>
+    <string name="grad">Escala</string>
 </resources>

@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
 
@@ -163,16 +162,14 @@ public class PPIDownloader {
 	}
 
 	public static FTPFile lastFileModified(final FTPFile[] files, final String containsFilter) {
-		//FIXME a veces modifican archivos antiguos para comprimir las lecturas de una hora en un solo fichero (dos dias anteriores por ejemplo). Esto hace que el ultimo modificado no siempre sea el ultimo barrido del radar.
-		Date lastMod = files[0].getTimestamp().getTime();
 		FTPFile choice = null;
 		for (FTPFile file : files) {
 			if (!file.getName().toLowerCase().contains(containsFilter.toLowerCase())) {
 				continue;
 			}
-			if (file.getTimestamp().getTime().after(lastMod)) {
+
+			if(choice == null || file.getName().compareTo(choice.getName()) > 0) {
 				choice = file;
-				lastMod = file.getTimestamp().getTime();
 			}
 		}
 		return choice;
