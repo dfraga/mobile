@@ -9,7 +9,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
+import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
@@ -25,6 +27,7 @@ import android.widget.ExpandableListView.OnGroupCollapseListener;
 import android.widget.ExpandableListView.OnGroupExpandListener;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 
 import com.android.utils.ExpandableRadarSelectionAdapter;
 import com.android.utils.ExpandableRadarSelectionListener;
@@ -42,7 +45,9 @@ import com.weather.populate.Populator;
 public class WeatherActivity extends MapActivity implements WeatherProcessListener {
 
 	private boolean blockingProcessDialog = false;
-	private boolean showScale = false;
+	private boolean showScale = true;
+	private boolean satelliteView = false;
+
 	{
 		Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler() {
 
@@ -55,6 +60,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 
 	private Button applyButton;
 	private ImageView gradImage;
+	private ProgressBar executing;
 	private ProgressDialog progressDialog;
 
 	private final AtomicBoolean processing = new AtomicBoolean(false);
@@ -78,6 +84,11 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 
 	final Handler progressThreadHandler = new Handler();
 	private long lastProgressUpdate = -1;
+
+	@Override
+	public void onConfigurationChanged(final Configuration newConfig) {
+		super.onConfigurationChanged(newConfig);
+	}
 
 	/** Called when the activity is first created. */
 	@Override
@@ -105,6 +116,9 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 				}
 			});
 
+			executing = (ProgressBar) findViewById(R.id.executing);
+			hideExecuting();
+
 			final ExpandableListView radarComboList = (ExpandableListView)findViewById(R.id.radarComboList);
 			radarComboList.setItemsCanFocus(false);
 			radarComboList.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
@@ -121,14 +135,16 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 
 				@Override
 				public void onGroupExpand(final int groupPosition) {
-					applyButton.setVisibility(View.INVISIBLE);
+					applyButton.setVisibility(View.GONE);
 				}
 			});
 			radarComboList.setOnGroupCollapseListener(new OnGroupCollapseListener() {
 
 				@Override
 				public void onGroupCollapse(final int groupPosition) {
-					applyButton.setVisibility(View.VISIBLE);
+					if(executing == null || !executing.isEnabled()) {
+						applyButton.setVisibility(View.VISIBLE);
+					}
 				}
 			});
 
@@ -136,7 +152,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 			mapView.setBuiltInZoomControls(true);
 			mapView.setStreetView(false);
 			mapView.setTraffic(false);
-			mapView.setSatellite(true);
+			mapView.setSatellite(satelliteView);
 
 			progressDialog = new ProgressDialog(WeatherActivity.this.applyButton.getContext());
 			progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
@@ -157,10 +173,31 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 
 	}
 
+	private void hideExecuting() {
+		if(executing != null) {
+			executing.setEnabled(false);
+			executing.setVisibility(View.GONE);
+		}
+	}
+
+	private void showExecuting() {
+		if(executing != null) {
+			executing.setEnabled(true);
+			executing.setVisibility(View.VISIBLE);
+		}
+	}
+
 	private GeoPoint setMapUserCenter(final boolean fineZoom) {
-		//Obtenemos ultima posicion conocida para centrar el mapa
 		LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-		String locationProvider = LocationManager.NETWORK_PROVIDER;
+		//Obtenemos ultima posicion conocida para centrar el mapa
+
+		Criteria req = new Criteria();
+		req.setAccuracy(Criteria.ACCURACY_COARSE);
+		req.setPowerRequirement(Criteria.POWER_LOW);
+		req.setCostAllowed(false);
+		String locationProvider = locationManager.getBestProvider(req, false);
+
+		//String locationProvider = LocationManager.NETWORK_PROVIDER;
 		Location lastKnownLocation = locationManager.getLastKnownLocation(locationProvider);
 
 		// obetener centro por defecto del seleccionado
@@ -206,7 +243,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 		final MapController mapController = mapView.getController();
 		mapController.setCenter(center);
 		mapController.animateTo(center);
-		mapController.setZoom(fineZoom ? 18:8);
+		mapController.setZoom(fineZoom ? 14:8);
 	}
 
 	private final Runnable processBeginAction = new Runnable() {
@@ -214,7 +251,8 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 		@Override
 		public void run() {
 			applyButton.setEnabled(false);
-			applyButton.setVisibility(View.INVISIBLE);
+			applyButton.setVisibility(View.GONE);
+			showExecuting();
 			progress = 0;
 
 			progressDialog.setMax(100);
@@ -277,6 +315,8 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 			applyButton.setEnabled(true);
 			gradImage.setVisibility(showScale ? View.VISIBLE:View.GONE);
 		}
+
+		hideExecuting();
 
 		if(progressDialog != null) {
 			progressDialog.hide();
@@ -407,13 +447,15 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 
 	/* Set ID's */
 	private final int MENU_QUIT = 0;
-	private final int MENU_SHOW_PROCESS = 1;
-	private final int MENU_SHOW_SCALE = 2;
-	private final int MENU_CENTER = 3;
+	private final int MENU_SATELLITE_VIEW = 1;
+	private final int MENU_SHOW_PROCESS = 2;
+	private final int MENU_SHOW_SCALE = 3;
+	private final int MENU_CENTER = 4;
 
 	/* Create Menu Items */
 	@Override
 	public boolean onCreateOptionsMenu(final Menu menu) {
+		menu.add(0, MENU_SATELLITE_VIEW, 0, getSatelliteViewMenuId());
 		menu.add(0, MENU_SHOW_PROCESS, 0, getBlockingProgresMenuId());
 		menu.add(0, MENU_SHOW_SCALE, 0, getShowScaleMenuId());
 		menu.add(0, MENU_CENTER, 0, R.string.centerMap);
@@ -436,6 +478,12 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 			item.setTitle(getShowScaleMenuId());
 			return true;
 
+		case MENU_SATELLITE_VIEW:
+			satelliteView = !satelliteView;
+			mapView.setSatellite(satelliteView);
+			item.setTitle(getSatelliteViewMenuId());
+			return true;
+
 		case MENU_CENTER:
 			setMapUserCenter(true);
 			return true;
@@ -453,6 +501,9 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 	}
 	private int getShowScaleMenuId() {
 		return showScale ? R.string.hideScale : R.string.showScale;
+	}
+	private int getSatelliteViewMenuId() {
+		return satelliteView ? R.string.hideSatelliteView : R.string.showSatelliteView;
 	}
 
 }

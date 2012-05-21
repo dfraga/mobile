@@ -10,4 +10,6 @@
     <string name="hideScale">Ocultar Escala</string>
     <string name="showScale">Ver Escala</string>
     <string name="centerMap">Mi Posición</string>
+    <string name="hideSatelliteView">Vista Mapa</string>
+    <string name="showSatelliteView">Vista Satélite</string>
 </resources>

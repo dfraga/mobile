@@ -18,6 +18,12 @@
                 android:layout_gravity="center_vertical"
                 android:gravity="center_vertical"
                 android:text="@string/execute" />
+            
+            <ProgressBar android:id="@+id/executing"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:gravity="center_vertical"/>
 
     		<ExpandableListView
     		    android:id="@+id/radarComboList"
