@@ -17,8 +17,9 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
                 android:gravity="center_vertical"
-                android:text="@string/execute" />
-            
+                android:drawableLeft="@drawable/radar"
+                />
+
             <ProgressBar android:id="@+id/executing"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -51,7 +52,7 @@
                 android:contentDescription="@string/grad"
             />
     </LinearLayout>
-    
+
     
     <!-- 
           debug: android:apiKey="00QztEBgmSrZ93z9NaX6nlDLlK-EdcWchbTLwaw"

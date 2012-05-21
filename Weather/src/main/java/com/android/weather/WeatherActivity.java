@@ -44,7 +44,7 @@ import com.weather.populate.Populator;
 
 public class WeatherActivity extends MapActivity implements WeatherProcessListener {
 
-	private boolean blockingProcessDialog = false;
+	private final boolean blockingProcessDialog = false;
 	private boolean showScale = true;
 	private boolean satelliteView = false;
 
@@ -109,6 +109,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 			applyButton = (Button) findViewById(R.id.execute);
 			applyButton.setEnabled(true);
 			applyButton.setVisibility(View.VISIBLE);
+			//applyButton.setText(R.string.execute);
 			applyButton.setOnClickListener(new OnClickListener() {
 				@Override
 				public void onClick(final View v) {
@@ -156,7 +157,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 
 			progressDialog = new ProgressDialog(WeatherActivity.this.applyButton.getContext());
 			progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-			progressDialog.setCancelable(false);
+			progressDialog.setCancelable(true);
 			progressDialog.setMessage("Comprobando datos.");
 
 			processing.set(false);
@@ -446,20 +447,26 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 
 
 	/* Set ID's */
-	private final int MENU_QUIT = 0;
-	private final int MENU_SATELLITE_VIEW = 1;
-	private final int MENU_SHOW_PROCESS = 2;
-	private final int MENU_SHOW_SCALE = 3;
-	private final int MENU_CENTER = 4;
+	private final int MENU_CENTER = 0;
+	private final int MENU_SHOW_PROCESS = 1;
+	private final int MENU_SHOW_SCALE = 2;
+	private final int MENU_SATELLITE_VIEW = 3;
+	private final int MENU_QUIT = 4;
 
 	/* Create Menu Items */
 	@Override
 	public boolean onCreateOptionsMenu(final Menu menu) {
-		menu.add(0, MENU_SATELLITE_VIEW, 0, getSatelliteViewMenuId());
-		menu.add(0, MENU_SHOW_PROCESS, 0, getBlockingProgresMenuId());
-		menu.add(0, MENU_SHOW_SCALE, 0, getShowScaleMenuId());
-		menu.add(0, MENU_CENTER, 0, R.string.centerMap);
-		menu.add(0, MENU_QUIT, 0, R.string.exit);
+		menu.add(0, MENU_SATELLITE_VIEW, MENU_SATELLITE_VIEW, getSatelliteViewMenuId());
+		menu.add(0, MENU_SHOW_PROCESS, MENU_SHOW_PROCESS, R.string.showProgress);
+		menu.add(0, MENU_SHOW_SCALE, MENU_SHOW_SCALE, getShowScaleMenuId());
+		menu.add(0, MENU_CENTER, MENU_CENTER, R.string.centerMap);
+		menu.add(0, MENU_QUIT, MENU_QUIT, R.string.exit);
+
+		menu.getItem(MENU_SATELLITE_VIEW).setIcon(getSatelliteViewMenuIconId());
+		menu.getItem(MENU_SHOW_PROCESS).setIcon(R.drawable.progreso);
+		menu.getItem(MENU_SHOW_SCALE).setIcon(R.drawable.escala);
+		menu.getItem(MENU_CENTER).setIcon(R.drawable.centrar);
+		menu.getItem(MENU_QUIT).setIcon(R.drawable.salir);
 		return true;
 	}
 
@@ -468,8 +475,9 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 	public boolean onOptionsItemSelected(final MenuItem item) {
 		switch (item.getItemId()) {
 		case MENU_SHOW_PROCESS:
-			blockingProcessDialog = !blockingProcessDialog;
-			item.setTitle(getBlockingProgresMenuId());
+			if(this.processing != null && this.processing.get()) {
+				progressDialog.show();
+			}
 			return true;
 
 		case MENU_SHOW_SCALE:
@@ -482,6 +490,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 			satelliteView = !satelliteView;
 			mapView.setSatellite(satelliteView);
 			item.setTitle(getSatelliteViewMenuId());
+			item.setIcon(getSatelliteViewMenuIconId());
 			return true;
 
 		case MENU_CENTER:
@@ -496,14 +505,14 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 	}
 
 
-	private int getBlockingProgresMenuId() {
-		return blockingProcessDialog ? R.string.hideProgress : R.string.showProgress;
-	}
 	private int getShowScaleMenuId() {
 		return showScale ? R.string.hideScale : R.string.showScale;
 	}
 	private int getSatelliteViewMenuId() {
 		return satelliteView ? R.string.hideSatelliteView : R.string.showSatelliteView;
+	}
+	private int getSatelliteViewMenuIconId() {
+		return satelliteView ? R.drawable.mapa : R.drawable.landscape;
 	}
 
 }
