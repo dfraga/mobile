@@ -157,7 +157,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 
 	}
 
-	public void setMapRadarCenter() {
+	private GeoPoint setMapUserCenter(final boolean fineZoom) {
 		//Obtenemos ultima posicion conocida para centrar el mapa
 		LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 		String locationProvider = LocationManager.NETWORK_PROVIDER;
@@ -168,7 +168,17 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 				getGeoPoint(this.selectedRadar.getLatitude(), this.selectedRadar.getLongitude()):
 					getGeoPoint(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude()));
 
-		centerMap(center);
+		centerMap(center, fineZoom);
+		if(fineZoom) {
+			mapView.invalidate();
+		}
+
+		return center;
+
+	}
+
+	private void setMapRadarCenter() {
+		final GeoPoint center = setMapUserCenter(false);
 		RadarCenter nearest = null;
 		double nearestDistance = Double.MAX_VALUE;
 		for(RadarCenter radar:RadarCenter.values()) {
@@ -192,11 +202,11 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 				+ Math.pow((currentGeo.getLongitudeE6() - center.getLongitudeE6()),2);
 	}
 
-	private void centerMap(final GeoPoint center) {
+	private void centerMap(final GeoPoint center, final boolean fineZoom) {
 		final MapController mapController = mapView.getController();
 		mapController.setCenter(center);
 		mapController.animateTo(center);
-		mapController.setZoom(8);
+		mapController.setZoom(fineZoom ? 18:8);
 	}
 
 	private final Runnable processBeginAction = new Runnable() {
@@ -233,7 +243,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 
 			if(imageGeneralData != null) {
 				final GeoPoint center = getGeoPoint(Class3X01Y192.RADAR_LATITUDE, Class3X01Y192.RADAR_LONGITUDE);
-				centerMap(center);
+				centerMap(center, false);
 
 				List<Overlay> overlays = mapView.getOverlays();
 				overlays.clear();
@@ -286,7 +296,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 		}
 	};
 
-	public void setSelectedRadar(final RadarCenter selectedRadar) {
+	private void setSelectedRadar(final RadarCenter selectedRadar) {
 		this.selectedRadar = selectedRadar == null ? this.selectedRadar : selectedRadar;
 	}
 
@@ -307,7 +317,7 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 		}
 	}
 
-	public static String getStackTrace(final String prefix,
+	private static String getStackTrace(final String prefix,
 			final Throwable aThrowable) {
 		final Writer result = new StringWriter();
 		final PrintWriter printWriter = new PrintWriter(result);
@@ -399,13 +409,15 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 	private final int MENU_QUIT = 0;
 	private final int MENU_SHOW_PROCESS = 1;
 	private final int MENU_SHOW_SCALE = 2;
+	private final int MENU_CENTER = 3;
 
 	/* Create Menu Items */
 	@Override
 	public boolean onCreateOptionsMenu(final Menu menu) {
-		menu.add(0, MENU_SHOW_PROCESS, 0, getBlockingProgresMenuStr());
-		menu.add(0, MENU_SHOW_SCALE, 0, getShowScaleMenuStr());
-		menu.add(0, MENU_QUIT, 0, "Salir");
+		menu.add(0, MENU_SHOW_PROCESS, 0, getBlockingProgresMenuId());
+		menu.add(0, MENU_SHOW_SCALE, 0, getShowScaleMenuId());
+		menu.add(0, MENU_CENTER, 0, R.string.centerMap);
+		menu.add(0, MENU_QUIT, 0, R.string.exit);
 		return true;
 	}
 
@@ -415,13 +427,17 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 		switch (item.getItemId()) {
 		case MENU_SHOW_PROCESS:
 			blockingProcessDialog = !blockingProcessDialog;
-			item.setTitle(getBlockingProgresMenuStr());
+			item.setTitle(getBlockingProgresMenuId());
 			return true;
 
 		case MENU_SHOW_SCALE:
 			showScale = !showScale;
 			gradImage.setVisibility(showScale ? View.VISIBLE:View.GONE);
-			item.setTitle(getShowScaleMenuStr());
+			item.setTitle(getShowScaleMenuId());
+			return true;
+
+		case MENU_CENTER:
+			setMapUserCenter(true);
 			return true;
 
 		case MENU_QUIT:
@@ -432,11 +448,11 @@ public class WeatherActivity extends MapActivity implements WeatherProcessListen
 	}
 
 
-	private String getBlockingProgresMenuStr() {
-		return blockingProcessDialog ? "Ocultar progreso" : "Ver progreso";
+	private int getBlockingProgresMenuId() {
+		return blockingProcessDialog ? R.string.hideProgress : R.string.showProgress;
 	}
-	private String getShowScaleMenuStr() {
-		return showScale ? "Ocultar escala" : "Ver escala";
+	private int getShowScaleMenuId() {
+		return showScale ? R.string.hideScale : R.string.showScale;
 	}
 
 }

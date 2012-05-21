@@ -3,4 +3,11 @@
     <string name="app_name">Weather</string>
     <string name="execute">Barrido</string>
     <string name="grad">Escala</string>
+
+    <string name="exit">Salir</string>
+    <string name="hideProgress">Ocultar Progreso</string>
+    <string name="showProgress">Ver Progreso</string>
+    <string name="hideScale">Ocultar Escala</string>
+    <string name="showScale">Ver Escala</string>
+    <string name="centerMap">Mi Posición</string>
 </resources>
