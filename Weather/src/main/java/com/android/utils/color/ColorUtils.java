@@ -1,4 +1,4 @@
-package com.android.utils;
+package com.android.utils.color;
 
 import android.graphics.Color;
 

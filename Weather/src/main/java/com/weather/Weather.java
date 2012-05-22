@@ -14,7 +14,7 @@ import android.graphics.Color;
 import android.os.Environment;
 import android.util.Log;
 
-import com.android.utils.ColorUtils;
+import com.android.utils.color.ColorUtils;
 import com.android.weather.WeatherProcessListener;
 import com.weather.populate.Class3X01Y192;
 import com.weather.populate.LabelData;

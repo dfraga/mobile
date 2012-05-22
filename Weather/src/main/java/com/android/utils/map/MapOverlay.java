@@ -1,4 +1,4 @@
-package com.android.utils;
+package com.android.utils.map;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
