@@ -182,9 +182,9 @@ public class WeatherActivity extends DoubleTapMapActivity implements WeatherProc
 		return selectedRadar;
 	}
 
-	private void setMapRadarCenter(final boolean fine, final boolean recalculateUser) {
-		if(recalculateUser) {
-			final GeoPoint center = setMapUserCenter(fine);
+	private void setMapRadarCenter(final boolean fine, final boolean user) {
+		final GeoPoint center = setMapCenter(fine, user);
+		if(user) {
 			RadarCenter nearest = null;
 			double nearestDistance = Double.MAX_VALUE;
 			for(RadarCenter radar:RadarCenter.values()) {

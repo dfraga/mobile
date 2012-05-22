@@ -122,19 +122,22 @@ public class DoubleTapMapActivity extends MapActivity implements GestureDetector
 		return false;
 	}
 
-	protected GeoPoint setMapUserCenter(final boolean fineZoom) {
+	protected GeoPoint setMapCenter(final boolean fineZoom, final boolean user) {
+		final GeoPoint center;
+		if(user) {
+			LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+			locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+			if(lastKnownLocation == null) {
+				lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+			}
 
-		LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-		locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
-		if(lastKnownLocation == null) {
-			lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+			// obetener centro por defecto del seleccionado
+			center = (lastKnownLocation == null ?
+					getGeoPoint(getSelectedRadar().getLatitude(), getSelectedRadar().getLongitude()):
+						getGeoPoint(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude()));
+		} else {
+			center = getGeoPoint(getSelectedRadar().getLatitude(), getSelectedRadar().getLongitude());
 		}
-
-		// obetener centro por defecto del seleccionado
-		final GeoPoint center = (lastKnownLocation == null ?
-				getGeoPoint(getSelectedRadar().getLatitude(), getSelectedRadar().getLongitude()):
-					getGeoPoint(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude()));
-
 		centerMap(center, fineZoom);
 		if(fineZoom) {
 			mapView.invalidate();
