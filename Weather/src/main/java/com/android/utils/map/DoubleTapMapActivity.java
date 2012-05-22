@@ -5,9 +5,10 @@ import java.util.List;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
-import android.location.Criteria;
 import android.location.Location;
+import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.Bundle;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 
@@ -20,6 +21,8 @@ import com.google.android.maps.Overlay;
 public class DoubleTapMapActivity extends MapActivity implements GestureDetector.OnDoubleTapListener, GestureDetector.OnGestureListener {
 
 	private DoubleTapMapView mapView;
+	private Location lastKnownLocation;
+	private LocationListener locationListener;
 
 	@Override
 	public void onConfigurationChanged(final Configuration newConfig) {
@@ -32,6 +35,28 @@ public class DoubleTapMapActivity extends MapActivity implements GestureDetector
 		this.mapView.setBuiltInZoomControls(true);
 		this.mapView.setStreetView(false);
 		this.mapView.setTraffic(false);
+
+		locationListener = new LocationListener() {
+			@Override
+			public void onLocationChanged(final Location location) {
+				lastKnownLocation = location;
+			}
+
+			@Override
+			public void onProviderDisabled(final String provider) {
+
+			}
+			@Override
+			public void onProviderEnabled(final String provider) {
+
+			}
+
+			@Override
+			public void onStatusChanged(final String provider, final int status, final Bundle extras) {
+
+			}
+		};
+
 	}
 
 	public void drawOverlay(final Bitmap imBitmap, final GeoPoint center, final GeoPoint nw, final GeoPoint se) {
@@ -96,27 +121,13 @@ public class DoubleTapMapActivity extends MapActivity implements GestureDetector
 	}
 
 	protected GeoPoint setMapUserCenter(final boolean fineZoom) {
+
 		LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-		//Obtenemos ultima posicion conocida para centrar el mapa
+		locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
 
-		Criteria req = new Criteria();
-		req.setAccuracy(Criteria.ACCURACY_COARSE);
-		req.setPowerRequirement(Criteria.POWER_LOW);
-		req.setCostAllowed(false);
-
-		Location lastKnownLocation = null;
-		List<String> providers = locationManager.getProviders(req, false);
-		if(providers!= null) {
-			for(String locationProvider : providers) {
-				lastKnownLocation = locationManager.getLastKnownLocation(locationProvider);
-				if(lastKnownLocation != null) {
-					break;
-				}
-			}
+		if(lastKnownLocation == null) {
+			lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
 		}
-		//String locationProvider = locationManager.getBestProvider(req, false);
-		//String locationProvider = LocationManager.NETWORK_PROVIDER;
-		//Location lastKnownLocation = locationManager.getLastKnownLocation(locationProvider);
 
 		// obetener centro por defecto del seleccionado
 		final GeoPoint center = (lastKnownLocation == null ?
