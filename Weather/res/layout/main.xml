@@ -58,7 +58,7 @@
           debug: android:apiKey="00QztEBgmSrZ93z9NaX6nlDLlK-EdcWchbTLwaw"
           dfraga: android:apiKey="00QztEBgmSraMDHUcL1BN0vaudJu05BQ-LXExbQ"
      -->
-    <com.google.android.maps.MapView
+    <com.android.utils.map.DoubleTapMapView
         xmlns:android="http://schemas.android.com/apk/res/android"
         android:id="@+id/mapView"
         android:layout_width="fill_parent"
