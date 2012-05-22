@@ -62,8 +62,9 @@ public class DoubleTapMapActivity extends MapActivity implements GestureDetector
 	}
 
 	@Override
-	public void onLongPress(final MotionEvent e) {
-		setMapUserCenter(true);
+	public void onLongPress(final MotionEvent ev) {
+		centerMap(mapView.getProjection().fromPixels((int) ev.getX(), (int) ev.getY()), true);
+		mapView.invalidate();
 	}
 
 	@Override
