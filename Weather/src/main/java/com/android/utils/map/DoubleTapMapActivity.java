@@ -6,9 +6,7 @@ import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.location.Location;
-import android.location.LocationListener;
 import android.location.LocationManager;
-import android.os.Bundle;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 
@@ -22,7 +20,7 @@ public class DoubleTapMapActivity extends MapActivity implements GestureDetector
 
 	private DoubleTapMapView mapView;
 	private Location lastKnownLocation;
-	private LocationListener locationListener;
+	//	private LocationListener locationListener;
 
 	@Override
 	public void onConfigurationChanged(final Configuration newConfig) {
@@ -36,26 +34,26 @@ public class DoubleTapMapActivity extends MapActivity implements GestureDetector
 		this.mapView.setStreetView(false);
 		this.mapView.setTraffic(false);
 
-		locationListener = new LocationListener() {
-			@Override
-			public void onLocationChanged(final Location location) {
-				lastKnownLocation = location;
-			}
-
-			@Override
-			public void onProviderDisabled(final String provider) {
-
-			}
-			@Override
-			public void onProviderEnabled(final String provider) {
-
-			}
-
-			@Override
-			public void onStatusChanged(final String provider, final int status, final Bundle extras) {
-
-			}
-		};
+		//		locationListener = new LocationListener() {
+		//			@Override
+		//			public void onLocationChanged(final Location location) {
+		//				lastKnownLocation = location;
+		//			}
+		//
+		//			@Override
+		//			public void onProviderDisabled(final String provider) {
+		//
+		//			}
+		//			@Override
+		//			public void onProviderEnabled(final String provider) {
+		//
+		//			}
+		//
+		//			@Override
+		//			public void onStatusChanged(final String provider, final int status, final Bundle extras) {
+		//
+		//			}
+		//		};
 
 	}
 
@@ -123,11 +121,10 @@ public class DoubleTapMapActivity extends MapActivity implements GestureDetector
 	protected GeoPoint setMapUserCenter(final boolean fineZoom) {
 
 		LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-		locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
-
-		if(lastKnownLocation == null) {
-			lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-		}
+		//		locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+		//		if(lastKnownLocation == null) {
+		lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+		//		}
 
 		// obetener centro por defecto del seleccionado
 		final GeoPoint center = (lastKnownLocation == null ?
