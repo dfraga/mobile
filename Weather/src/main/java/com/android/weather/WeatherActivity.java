@@ -119,7 +119,7 @@ public class WeatherActivity extends DoubleTapMapActivity implements WeatherProc
 				@Override
 				public void itemSelected(final RadarCenter selectedRadar) {
 					setSelectedRadar(selectedRadar);
-					setMapRadarCenter();
+					setMapRadarCenter(false, false);
 				}
 			};
 			mapAdapter = new ExpandableRadarSelectionAdapter(radarComboList, listener);
@@ -149,7 +149,7 @@ public class WeatherActivity extends DoubleTapMapActivity implements WeatherProc
 			progress = 0;
 
 			getMapView().setSatellite(satelliteView);
-			setMapRadarCenter();
+			setMapRadarCenter(true, true);
 
 			//Carga de lru
 			LRUFtpFiles.getInstance();
@@ -182,19 +182,21 @@ public class WeatherActivity extends DoubleTapMapActivity implements WeatherProc
 		return selectedRadar;
 	}
 
-	private void setMapRadarCenter() {
-		final GeoPoint center = setMapUserCenter(false);
-		RadarCenter nearest = null;
-		double nearestDistance = Double.MAX_VALUE;
-		for(RadarCenter radar:RadarCenter.values()) {
-			GeoPoint currentGeo = getGeoPoint(radar.getLatitude(), radar.getLongitude());
-			double distance = getFakeDistance(currentGeo, center);
-			if(distance < nearestDistance) {
-				nearest = radar;
-				nearestDistance = distance;
+	private void setMapRadarCenter(final boolean fine, final boolean recalculateUser) {
+		if(recalculateUser) {
+			final GeoPoint center = setMapUserCenter(fine);
+			RadarCenter nearest = null;
+			double nearestDistance = Double.MAX_VALUE;
+			for(RadarCenter radar:RadarCenter.values()) {
+				GeoPoint currentGeo = getGeoPoint(radar.getLatitude(), radar.getLongitude());
+				double distance = getFakeDistance(currentGeo, center);
+				if(distance < nearestDistance) {
+					nearest = radar;
+					nearestDistance = distance;
+				}
 			}
+			this.selectedRadar = nearest;
 		}
-		this.selectedRadar = nearest;
 		mapAdapter.setSelected(this.selectedRadar, false);
 		getMapView().invalidate();
 	}
@@ -432,7 +434,7 @@ public class WeatherActivity extends DoubleTapMapActivity implements WeatherProc
 
 	@Override
 	public boolean centerMenuSelected(final MenuItem item) {
-		onLongPress(null);
+		setMapRadarCenter(true,true);
 		return true;
 	}
 

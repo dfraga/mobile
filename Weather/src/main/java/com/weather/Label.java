@@ -29,7 +29,7 @@ public class Label implements Serializable {
 	}
 
 	Label(final int typeId, final int x, final int y) {
-		this.type = LabelType.getLabelType(typeId);;
+		this.type = LabelType.getLabelType(typeId);
 		this.x = x;
 		this.y = y;
 
