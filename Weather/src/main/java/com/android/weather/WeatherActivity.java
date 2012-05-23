@@ -120,6 +120,7 @@ public class WeatherActivity extends DoubleTapMapActivity implements WeatherProc
 				public void itemSelected(final RadarCenter selectedRadar) {
 					setSelectedRadar(selectedRadar);
 					setMapRadarCenter(false, false);
+					applyFilter();
 				}
 			};
 			mapAdapter = new ExpandableRadarSelectionAdapter(radarComboList, listener);
@@ -199,6 +200,7 @@ public class WeatherActivity extends DoubleTapMapActivity implements WeatherProc
 		}
 		mapAdapter.setSelected(this.selectedRadar, false);
 		getMapView().invalidate();
+
 	}
 
 	private final Runnable processBeginAction = new Runnable() {

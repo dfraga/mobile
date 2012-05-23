@@ -122,7 +122,7 @@ public class ExpandableRadarSelectionAdapter extends BaseExpandableListAdapter {
 
 
 	public void setSelected(final RadarCenter selectedRadar, final boolean notifyListener) {
-		for (int i = 0; i < groups.length; i++) {
+		for (int i = 0; i < this.children.length; i++) {
 			for (int j = 0; j < this.children[i].length; j++) {
 				RadarCenter current = children[i][j];
 				if(current.getId().equals(selectedRadar.getId())) {
@@ -135,11 +135,13 @@ public class ExpandableRadarSelectionAdapter extends BaseExpandableListAdapter {
 
 	private boolean selectChild(final int groupPosition, final int childPosition, final long id, final boolean notifyListener) {
 		final RadarCenter radarKey = (RadarCenter) getChild(groupPosition, childPosition);
+		groups[groupPosition] = radarKey.toString();
+		radarComboList.setSelectedChild(groupPosition, childPosition, false);
+		radarComboList.collapseGroup(groupPosition);
+		notifyDataSetChanged();
 		if(notifyListener) {
 			listener.itemSelected(radarKey);
 		}
-		this.groups[groupPosition] = radarKey.toString();
-		radarComboList.collapseGroup(groupPosition);
 		return true;
 	}
 
