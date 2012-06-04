@@ -29,7 +29,9 @@ public class Weather {
 	private static boolean DRAW_UNKNOWN = false;
 	private static final int FINAL_STEP = (((byte) 0x00 & 0xFF) << 24) + (((byte) 0x37 & 0xFF) << 16) + (((byte) 0x37 & 0xFF) << 8) + (((byte) 0x37 & 0xFF) << 0);
 
-	private static int MIN_PIXEL_VALUE = 25;
+	private static int MIN_PIXEL_VALUE = 23;
+	private static int RADAR_PIXEL_ERROR = 10;
+
 	private int minValue = 0;
 	private int maxValue = 0;
 
@@ -303,6 +305,7 @@ public class Weather {
 						if (label.labelPropKey.equals("0.30.2")) {
 							for(int i = 0; i< this.dataRepetition; i++){
 								int pixelData = this.bitSetToInt(data, index, label.size, label.scale, label.referenceValue);
+								pixelData = pixelData - Weather.RADAR_PIXEL_ERROR;
 
 								int alpha = 128;
 								int baseColor = Color.GREEN;
@@ -311,7 +314,6 @@ public class Weather {
 									alpha = Weather.DRAW_UNKNOWN ? 100:0;
 									baseColor = Color.GRAY;
 								} else if (pixelData < Weather.MIN_PIXEL_VALUE) {
-									//XXX rango en decibelios de -31 a 59, menor a 15 despreciable
 									alpha = 0;
 								}
 								int color = ColorUtils.getAlphaColor(alpha, ColorUtils.getHuePhasedColor(baseColor, (pixelData * 3)));

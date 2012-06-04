@@ -186,21 +186,24 @@ public class WeatherActivity extends DoubleTapMapActivity implements WeatherProc
 	private void setMapRadarCenter(final boolean fine, final boolean user) {
 		final GeoPoint center = setMapCenter(fine, user);
 		if(user) {
-			RadarCenter nearest = null;
-			double nearestDistance = Double.MAX_VALUE;
-			for(RadarCenter radar:RadarCenter.values()) {
-				GeoPoint currentGeo = getGeoPoint(radar.getLatitude(), radar.getLongitude());
-				double distance = getFakeDistance(currentGeo, center);
-				if(distance < nearestDistance) {
-					nearest = radar;
-					nearestDistance = distance;
-				}
-			}
-			this.selectedRadar = nearest;
+			this.selectedRadar = getNearestRadar(center);
 		}
 		mapAdapter.setSelected(this.selectedRadar, false);
 		getMapView().invalidate();
+	}
 
+	private RadarCenter getNearestRadar(final GeoPoint center) {
+		RadarCenter nearest = null;
+		double nearestDistance = Double.MAX_VALUE;
+		for(RadarCenter radar:RadarCenter.values()) {
+			GeoPoint currentGeo = getGeoPoint(radar.getLatitude(), radar.getLongitude());
+			double distance = getFakeDistance(currentGeo, center);
+			if(distance < nearestDistance) {
+				nearest = radar;
+				nearestDistance = distance;
+			}
+		}
+		return nearest;
 	}
 
 	private final Runnable processBeginAction = new Runnable() {
